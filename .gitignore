@@ -1,0 +1,10 @@
+# Windows and macOS metadata
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# Editors and IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
