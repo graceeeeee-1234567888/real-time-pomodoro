@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>此刻 · 计时器</title>
+<style>
+:root{--bg:#f5f3ec;--paper:#fffef9;--ink:#293b36;--muted:#6e7770;--line:#dedfd4;--green:#476b56;--soft:#eaf0e5;--amber:#ae7843;--amber-soft:#f6edde;--danger:#a23f32;--shadow:0 8px 32px #283c3010}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 "Segoe UI","Microsoft YaHei",system-ui,sans-serif}button,input,select{font:inherit}button{cursor:pointer}button,input,select{border:1px solid var(--line);border-radius:10px;background:var(--paper);color:var(--ink)}button{min-height:40px;padding:8px 14px;font-weight:600}button:hover:not(:disabled){background:var(--soft);border-color:#b8c8b4}button:disabled{opacity:.45;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid #8aab73;outline-offset:3px}input,select{width:100%;min-height:46px;padding:8px 10px}input:disabled,select:disabled{background:#f3f3ed;color:var(--muted)}input[aria-invalid=true]{border-color:var(--danger)}input[type=number]{font-variant-numeric:tabular-nums}h1,h2,p{margin:0}h1{font-size:28px;font-weight:650;letter-spacing:.06em}h2{font-size:17px;font-weight:650}small,.muted{color:var(--muted)}.shell{max-width:1520px;margin:auto;padding:48px 36px 24px}.top{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-bottom:38px}.brand{display:flex;align-items:center;gap:14px}.brand-mark{display:grid;place-items:center;width:42px;height:42px;border:1px solid #bcc9b6;border-radius:50%;color:var(--green)}.brand-mark svg{width:25px;height:25px}.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.toolbar button{font-size:13px;background:transparent}.toolbar .sound-on{background:var(--soft);border-color:#cad6c3}.save-state{font-size:12px;color:var(--muted);margin-right:8px}.board{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:20px;align-items:start}.card{--span:4;grid-column:span var(--span);position:relative;min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);overflow:hidden;container-type:inline-size}.card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:20px 18px 18px 20px;border-bottom:1px solid #eeeee6}.heading{display:flex;align-items:center;gap:7px;min-width:0}.card-tools{display:flex;gap:2px;flex-shrink:0}.icon{width:28px;height:32px;min-height:32px;padding:0;display:grid;place-items:center;border:0;background:transparent;border-radius:7px;color:var(--muted);font-size:16px}.grip{cursor:grab;touch-action:none;width:20px;color:#98a293;font-size:19px;letter-spacing:-3px;margin-left:-5px;margin-right:3px}.grip:active{cursor:grabbing}.body{padding:26px 24px 30px}.card[data-card=clock] .body{padding-top:34px}.card.collapsed .body,.card.collapsed .resize{display:none}.card.collapsed{min-height:0!important}.summary{display:none;padding:18px 24px 22px;font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;gap:10px;align-items:center;flex-wrap:wrap}.summary small{font-size:12px;font-weight:400}.collapsed .summary{display:flex}.resize{position:absolute;bottom:6px;right:7px;width:24px;height:24px;min-height:24px;padding:0;border:0;border-radius:5px;background:transparent;color:#9aa58f;cursor:nwse-resize;touch-action:none;font-size:20px}.card.dragging{opacity:.5}.card.drop-target{outline:2px dashed var(--green);outline-offset:5px}.card.resizing{outline:2px solid #9bb289}.numeral{font-family:"Segoe UI",Arial,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.045em;font-weight:450;line-height:1.15}.clock-time{font-size:clamp(34px,14cqw,64px);white-space:nowrap;margin:12px 0 16px}.eyebrow{font-size:12px;color:var(--muted);letter-spacing:.04em}.date-line{font-size:15px}.clock-bottom{margin-top:54px;display:flex;align-items:center;justify-content:space-between;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}.dot{width:7px;height:7px;display:inline-block;border-radius:50%;background:#779267;margin-right:7px}.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;background:#eeefe7;border-radius:12px;margin-bottom:24px}.tabs button{background:transparent;border:0;min-height:38px;padding:7px 8px;color:var(--muted);font-size:14px}.tabs button[aria-pressed=true]{background:var(--paper);box-shadow:0 2px 6px #24372e0c;color:var(--ink)}.fields{display:flex;gap:10px;align-items:end}.field{flex:1;min-width:0}.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:7px}.duration-inputs input{text-align:center;font-size:21px;height:50px}.quick{display:flex;gap:8px;margin-top:12px}.quick button{flex:1;min-height:32px;padding:4px;font-size:12px;font-weight:500;background:#f8f8f1}.error{color:var(--danger);font-size:12px;min-height:19px;margin-top:9px}.readout{text-align:center;margin:24px 0 22px}.timer-time{font-size:clamp(36px,15.5cqw,72px);white-space:nowrap}.readout .status{margin-top:10px;font-size:12px;color:var(--muted);min-height:20px}.progress{width:100%;height:6px;border-radius:99px;background:#e9ecdf;overflow:hidden;margin:18px 0 12px}.progress-fill{height:100%;width:100%;background:#89a773;border-radius:99px}.end-line{display:flex;align-items:center;justify-content:space-between;font-size:12px;color:var(--muted);gap:12px}.actions{display:flex;gap:10px;margin-top:24px}.actions button{flex:1;min-height:46px}.primary{background:var(--green);color:white;border-color:var(--green)}.primary:hover:not(:disabled){background:#365640;color:white;border-color:#365640}.reminder-interval input{font-size:21px}.reminder-interval select{font-size:15px}.reminder-interval .field:first-child{flex:1.5}.reminder-time{font-size:clamp(34px,13cqw,54px);white-space:nowrap}.reminder-readout{padding:22px 15px;margin:24px 0 0;text-align:center;background:var(--amber-soft);border-radius:14px}.reminder-readout .eyebrow{margin-bottom:10px;color:#7d684e}.reminder-readout .status{font-size:12px;color:#7d684e;margin-top:10px}.last-reminder{display:flex;justify-content:space-between;gap:14px;font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:17px;margin-top:24px}.pill{display:inline-block;font-size:11px;color:var(--green);background:var(--soft);border-radius:99px;padding:3px 8px;vertical-align:middle}.pill.idle{color:var(--muted);background:#efefe8}.footer{font-size:12px;color:var(--muted);margin-top:28px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}.toast-region{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:10;width:min(440px,calc(100% - 32px));display:flex;flex-direction:column;gap:8px;pointer-events:none}.toast{background:#304b3b;color:white;padding:16px 22px;border-radius:14px;box-shadow:0 8px 32px #17231c25;font-size:14px}.toast.error-toast{background:#8d473a}[hidden]{display:none!important}body.interacting{user-select:none}
+@media(min-width:1101px){.card{min-height:var(--height,auto)}}
+@media(max-width:1100px){.shell{max-width:760px;padding:30px 22px}.board{grid-template-columns:1fr}.card{grid-column:1!important;min-height:0!important}.resize,.grip{display:none}.clock-bottom{margin-top:28px}.clock-time{font-size:64px}.timer-time{font-size:68px}.reminder-time{font-size:54px}.top{align-items:flex-start;margin-bottom:26px}.save-state{display:none}}
+@media(max-width:560px){.shell{padding:24px 14px}.top{display:block}.toolbar{margin-top:20px;gap:6px}.toolbar button{font-size:12px;padding:7px 10px;min-height:36px}.brand-mark{width:36px;height:36px}h1{font-size:25px}.board{gap:16px}.card-head{padding:17px 14px 15px 20px}.body{padding:22px 20px 28px}.clock-time{font-size:clamp(38px,13vw,62px)}.timer-time{font-size:clamp(38px,14vw,64px)}.reminder-time{font-size:48px}.footer{font-size:11px}.fields{gap:8px}.deadline-fields{flex-direction:column;align-items:stretch}.card-tools .icon{width:30px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="top">
+ <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></svg></span><h1>此刻 · 计时器</h1></div>
+ <div class="toolbar"><span class="save-state" id="save-state">自动保存</span><button id="sound" class="sound-on" aria-pressed="true">声音开启</button><button id="test-sound">试听</button><button id="restore-layout">恢复默认布局</button></div>
+</header>
+<main class="board" id="board" aria-label="计时器功能卡片">
+<section class="card" data-card="clock" aria-labelledby="clock-title" style="--span:3">
+ <header class="card-head"><div class="heading"><span class="grip" aria-hidden="true" title="拖动卡片">⠿</span><h2 id="clock-title">当前时间</h2></div><div class="card-tools"><button class="icon move-up" aria-label="当前时间上移" title="上移">↑</button><button class="icon move-down" aria-label="当前时间下移" title="下移">↓</button><button class="icon fold" aria-label="收起当前时间" aria-expanded="true" aria-controls="clock-body" title="收起">−</button></div></header>
+ <div class="summary"><span id="clock-mini">--:--:--</span><small>本地时间</small></div>
+ <div class="body" id="clock-body"><p class="eyebrow" id="day-part">此刻</p><div class="clock-time numeral" id="clock-time" role="timer" aria-label="当前时间">--:--:--</div><p class="date-line" id="clock-date"></p><div class="clock-bottom"><span><i class="dot"></i>本地时间</span><span id="timezone"></span></div></div>
+ <button class="resize" aria-label="调整当前时间卡片大小，方向键调整" title="拖动调整大小；方向键也可调整">⌟</button>
+</section>
+<section class="card" data-card="timer" aria-labelledby="timer-title" style="--span:5">
+ <header class="card-head"><div class="heading"><span class="grip" aria-hidden="true" title="拖动卡片">⠿</span><h2 id="timer-title">倒计时</h2></div><div class="card-tools"><button class="icon move-up" aria-label="倒计时上移" title="上移">↑</button><button class="icon move-down" aria-label="倒计时下移" title="下移">↓</button><button class="icon fold" aria-label="收起倒计时" aria-expanded="true" aria-controls="timer-body" title="收起">−</button></div></header>
+ <div class="summary"><span id="timer-mini">00:25:00</span><small id="timer-mini-status">待开始</small></div>
+ <div class="body" id="timer-body">
+  <div class="tabs" role="group" aria-label="倒计时方式"><button id="mode-duration" aria-pressed="true">设定时长</button><button id="mode-deadline" aria-pressed="false">到指定时间</button></div>
+  <div id="duration-panel"><div class="fields duration-inputs"><div class="field"><label for="hours">时</label><input id="hours" type="number" min="0" max="999" step="1" value="0" inputmode="numeric" aria-describedby="timer-error"></div><div class="field"><label for="minutes">分</label><input id="minutes" type="number" min="0" max="59" step="1" value="25" inputmode="numeric" aria-describedby="timer-error"></div><div class="field"><label for="seconds">秒</label><input id="seconds" type="number" min="0" max="59" step="1" value="0" inputmode="numeric" aria-describedby="timer-error"></div></div><div class="quick" aria-label="快捷时长"><button data-minutes="5">5 分钟</button><button data-minutes="15">15 分钟</button><button data-minutes="25">25 分钟</button></div></div>
+  <div id="deadline-panel" hidden><div class="fields deadline-fields"><div class="field"><label for="target-date">日期</label><input id="target-date" type="date" aria-describedby="timer-error"></div><div class="field"><label for="target-time">时刻</label><input id="target-time" type="time" step="1" aria-describedby="timer-error"></div></div></div>
+  <p class="error" id="timer-error" aria-live="polite"></p>
+  <div class="readout"><div class="timer-time numeral" id="timer-readout" role="timer" aria-label="剩余时间">00:25:00</div><p class="status" id="timer-status">待开始</p></div>
+  <div class="progress" role="progressbar" id="timer-progress" aria-label="剩余进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div class="progress-fill" id="progress-fill"></div></div>
+  <div class="end-line"><span>预计结束</span><span id="timer-end">—</span></div>
+  <div class="actions"><button id="timer-start" class="primary">开始</button><button id="timer-reset">重置</button></div>
+ </div><button class="resize" aria-label="调整倒计时卡片大小，方向键调整" title="拖动调整大小；方向键也可调整">⌟</button>
+</section>
+<section class="card" data-card="reminder" aria-labelledby="reminder-title" style="--span:4">
+ <header class="card-head"><div class="heading"><span class="grip" aria-hidden="true" title="拖动卡片">⠿</span><h2 id="reminder-title">间隔提醒</h2></div><div class="card-tools"><button class="icon move-up" aria-label="间隔提醒上移" title="上移">↑</button><button class="icon move-down" aria-label="间隔提醒下移" title="下移">↓</button><button class="icon fold" aria-label="收起间隔提醒" aria-expanded="true" aria-controls="reminder-body" title="收起">−</button></div></header>
+ <div class="summary"><span id="reminder-mini">00:05:00</span><small id="reminder-mini-status">未启动</small></div>
+ <div class="body" id="reminder-body">
+  <div class="fields reminder-interval"><div class="field"><label for="interval-value">每隔</label><input id="interval-value" type="number" min="1" max="999" step="1" value="5" inputmode="numeric" aria-describedby="reminder-error"></div><div class="field"><label for="interval-unit">单位</label><select id="interval-unit"><option value="1000">秒</option><option value="60000" selected>分钟</option><option value="3600000">小时</option></select></div></div>
+  <p class="error" id="reminder-error" aria-live="polite"></p>
+  <div class="reminder-readout"><p class="eyebrow">下次提醒</p><div class="reminder-time numeral" id="reminder-readout" role="timer" aria-label="距离下次提醒">00:05:00</div><p class="status" id="reminder-status">未启动</p></div>
+  <div class="actions"><button id="reminder-toggle" class="primary">启动提醒</button></div>
+  <div class="last-reminder"><span>最近提醒</span><span id="last-reminder">—</span></div>
+ </div><button class="resize" aria-label="调整间隔提醒卡片大小，方向键调整" title="拖动调整大小；方向键也可调整">⌟</button>
+</section>
+</main>
+<footer class="footer"><span>请保持页面打开，以接收提醒。</span><span id="layout-hint">拖动卡片左上角换位 · 右下角调整大小</span></footer>
+</div>
+<div class="toast-region" id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
+<script>
+'use strict';
+(() => {
+const $ = id => document.getElementById(id);
+const KEY = 'adhd-timer-v1';
+const ids = ['clock','timer','reminder'];
+const defaults = {clock:{span:3,height:0,collapsed:false},timer:{span:5,height:0,collapsed:false},reminder:{span:4,height:0,collapsed:false}};
+const localDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const pad = n => String(n).padStart(2,'0');
+const fmt = ms => {const s=Math.max(0,Math.ceil(ms/1000));return `${pad(Math.floor(s/3600))}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;};
+const timeText = d => `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const endText = ms => {const d=new Date(ms);return `${d.getMonth()+1}月${d.getDate()}日 ${timeText(d)}`;};
+const next = new Date(Date.now()+3600000);
+let state = {sound:true,mode:'duration',settings:{hours:'0',minutes:'25',seconds:'0',date:localDate(next),time:timeText(next),interval:'5',unit:'60000'},timer:{status:'idle',mode:'duration',end:0,total:1500000,remaining:1500000},reminder:{running:false,interval:300000,next:0,last:0},layout:structuredClone(defaults),order:[...ids]};
+let storageOK=true;
+try {
+ const raw=localStorage.getItem(KEY);
+ if(raw){const saved=JSON.parse(raw);if(saved&&typeof saved==='object'){
+  if(typeof saved.sound==='boolean')state.sound=saved.sound;
+  if(['duration','deadline'].includes(saved.mode))state.mode=saved.mode;
+  for(const key of Object.keys(state.settings))if(typeof saved.settings?.[key]==='string')state.settings[key]=saved.settings[key];
+  if(saved.timer&&['idle','running','paused','done'].includes(saved.timer.status)&&['duration','deadline'].includes(saved.timer.mode)&&['end','total','remaining'].every(k=>Number.isFinite(saved.timer[k])&&saved.timer[k]>=0)&&saved.timer.end<=8640000000000000)state.timer=saved.timer;
+  if(saved.reminder&&typeof saved.reminder.running==='boolean'&&['interval','next','last'].every(k=>Number.isFinite(saved.reminder[k])&&saved.reminder[k]>=0)&&saved.reminder.interval>=1000&&saved.reminder.interval<=3596400000)state.reminder=saved.reminder;
+  if(Array.isArray(saved.order)&&saved.order.length===3&&new Set(saved.order).size===3&&saved.order.every(k=>ids.includes(k)))state.order=saved.order;
+  for(const id of ids){const item=saved.layout?.[id];if(item)state.layout[id]={span:Math.max(id==='timer'?4:3,Math.min(12,Math.round(Number(item.span)||defaults[id].span))),height:Math.max(0,Math.min(1200,Number(item.height)||0)),collapsed:item.collapsed===true};}
+ }}
+} catch {storageOK=false;}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));storageOK=true;}catch{storageOK=false;}$('save-state').textContent=storageOK?'自动保存':'本次使用不保存';}
+const inputMap={hours:'hours',minutes:'minutes',seconds:'seconds','target-date':'date','target-time':'time','interval-value':'interval','interval-unit':'unit'};
+for(const [id,key]of Object.entries(inputMap))$(id).value=state.settings[key];
+const cards=Object.fromEntries(ids.map(id=>[id,document.querySelector(`[data-card="${id}"]`)]));
+function toast(message,error=false){const el=document.createElement('div');el.className='toast'+(error?' error-toast':'');el.textContent=message;$('toasts').append(el);setTimeout(()=>el.remove(),6500);}
+let audio;
+async function unlockAudio(){if(!state.sound)return false;try{const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw new Error();if(!audio)audio=new AC();if(audio.state!=='running')await audio.resume();return audio.state==='running';}catch{return false;}}
+function chime(){if(!state.sound)return false;if(!audio||audio.state!=='running')return false;try{const now=audio.currentTime;[0,.24].forEach((offset,i)=>{const osc=audio.createOscillator(),gain=audio.createGain();osc.type='sine';osc.frequency.value=i?784:659.25;gain.gain.setValueAtTime(0,now+offset);gain.gain.linearRampToValueAtTime(.12,now+offset+.025);gain.gain.exponentialRampToValueAtTime(.001,now+offset+.6);osc.connect(gain);gain.connect(audio.destination);osc.start(now+offset);osc.stop(now+offset+.65);});return true;}catch{return false;}}
+function notify(message){const played=chime();toast(message+(state.sound&&!played?' · 点击“试听”启用声音':''));}
+function renderSound(){$('sound').textContent=state.sound?'声音开启':'声音关闭';$('sound').setAttribute('aria-pressed',String(state.sound));$('sound').classList.toggle('sound-on',state.sound);}
+$('sound').onclick=()=>{state.sound=!state.sound;renderSound();save();if(state.sound)unlockAudio();};
+$('test-sound').onclick=async()=>{if(!state.sound){toast('声音已关闭');return;}await unlockAudio();if(!chime())toast('当前浏览器无法播放提示音',true);};
+document.addEventListener('pointerdown',()=>{if(state.sound)unlockAudio();},{once:true});
+document.addEventListener('keydown',()=>{if(state.sound)unlockAudio();},{once:true});
+function durationValue(){const values=['hours','minutes','seconds'].map(id=>$(id).value.trim());const ns=values.map(Number);if(values.some(v=>!/^\d+$/.test(v))||ns[0]>999||ns[1]>59||ns[2]>59)return {error:'请输入整数：时 0–999，分和秒 0–59。'};const ms=(ns[0]*3600+ns[1]*60+ns[2])*1000;return ms>0?{ms}:{error:'请设置大于 0 的时长。'};}
+function deadlineValue(now){const date=$('target-date').value,time=$('target-time').value;if(!date||!time)return {error:'请选择日期和时刻。'};const d=new Date(`${date}T${time}`),end=d.getTime();if(!Number.isFinite(end)||localDate(d)!==date)return {error:'请选择有效的日期和时刻。'};if(end<=now)return {error:date===localDate(new Date(now))?'这个时刻已过去，请改选明天或更晚的日期。':'请选择未来的日期和时刻。'};return {ms:end-now,end};}
+function intervalValue(){const raw=$('interval-value').value.trim(),n=Number(raw),unit=Number($('interval-unit').value);return /^\d+$/.test(raw)&&n>=1&&n<=999&&[1000,60000,3600000].includes(unit)?{ms:n*unit}:{error:'请输入 1–999 的整数。'};}
+function timerValue(now=Date.now()){return state.mode==='duration'?durationValue():deadlineValue(now);}
+function showError(id,message){$(id).textContent=message||'';const inputs=id==='timer-error'?(state.mode==='duration'?['hours','minutes','seconds']:['target-date','target-time']):['interval-value'];for(const input of inputs)$(input).setAttribute('aria-invalid',String(Boolean(message)));}
+function renderControls(){const t=state.timer,locked=t.status==='running'||t.status==='paused';$('duration-panel').hidden=state.mode!=='duration';$('deadline-panel').hidden=state.mode!=='deadline';for(const mode of ['duration','deadline']){$(`mode-${mode}`).setAttribute('aria-pressed',String(state.mode===mode));$(`mode-${mode}`).disabled=locked;}
+ for(const id of ['hours','minutes','seconds','target-date','target-time'])$(id).disabled=locked;
+ document.querySelectorAll('[data-minutes]').forEach(b=>b.disabled=locked);
+ $('timer-start').hidden=t.status==='running'&&t.mode==='deadline';$('timer-start').textContent=t.status==='running'?'暂停':t.status==='paused'?'继续':t.status==='done'?'再次开始':'开始';$('timer-reset').textContent=locked&&t.mode==='deadline'?'取消':'重置';
+ $('interval-value').disabled=state.reminder.running;$('interval-unit').disabled=state.reminder.running;$('reminder-toggle').textContent=state.reminder.running?'停止提醒':'启动提醒';
+}
+function setMode(mode){if(['running','paused'].includes(state.timer.status))return;state.mode=mode;state.timer.status='idle';showError('timer-error','');renderControls();save();tick();}
+$('mode-duration').onclick=()=>setMode('duration');$('mode-deadline').onclick=()=>setMode('deadline');
+for(const [id,key] of Object.entries(inputMap))$(id).addEventListener('input',()=>{state.settings[key]=$(id).value;const isReminder=id.startsWith('interval');if(!isReminder&&!['running','paused'].includes(state.timer.status))state.timer.status='idle';showError(isReminder?'reminder-error':'timer-error','');save();tick();});
+document.querySelectorAll('[data-minutes]').forEach(b=>b.onclick=()=>{for(const [id,value]of Object.entries({hours:'0',minutes:b.dataset.minutes,seconds:'0'})){$(id).value=value;state.settings[id]=value;}state.timer.status='idle';showError('timer-error','');save();tick();});
+$('timer-start').onclick=()=>{const t=state.timer,now=Date.now();unlockAudio();if(t.status==='running'){t.remaining=Math.max(0,t.end-now);t.status=t.remaining>0?'paused':'done';if(t.status==='done')notify('倒计时结束，做得很好。');}else if(t.status==='paused'){t.end=now+t.remaining;t.status='running';}else{const v=timerValue(now);if(v.error){showError('timer-error',v.error);return;}state.timer={status:'running',mode:state.mode,end:v.end||now+v.ms,total:v.ms,remaining:v.ms};showError('timer-error','');}save();renderControls();tick();};
+$('timer-reset').onclick=()=>{state.timer={status:'idle',mode:state.mode,end:0,total:0,remaining:0};showError('timer-error','');save();renderControls();tick();};
+$('reminder-toggle').onclick=()=>{const r=state.reminder;unlockAudio();if(r.running){r.running=false;r.next=0;}else{const v=intervalValue();if(v.error){showError('reminder-error',v.error);return;}r.interval=v.ms;r.next=Date.now()+v.ms;r.running=true;showError('reminder-error','');}save();renderControls();tick();};
+function tick(){const now=Date.now(),d=new Date(now),t=state.timer,r=state.reminder;
+ $('clock-time').textContent=timeText(d);$('clock-mini').textContent=timeText(d);$('clock-date').textContent=d.toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric',weekday:'long'});$('day-part').textContent=d.getHours()<6?'凌晨':d.getHours()<12?'上午':d.getHours()<18?'下午':'晚上';
+ if(t.status==='running'&&t.end<=now){t.status='done';t.remaining=0;save();renderControls();notify('倒计时结束，做得很好。');}
+ if(r.running&&r.next<=now){r.last=now;r.next+= (Math.floor((now-r.next)/r.interval)+1)*r.interval;save();notify(`间隔提醒 · 现在是 ${timeText(d)}`);}
+ let remaining=0,status='待开始',end='—',ratio=100;
+ if(t.status==='running'){remaining=Math.max(0,t.end-now);status='进行中';end=endText(t.end);ratio=t.total?remaining/t.total*100:0;}
+ else if(t.status==='paused'){remaining=t.remaining;status='已暂停';end=endText(now+remaining);ratio=t.total?remaining/t.total*100:0;}
+ else if(t.status==='done'){status='已完成';ratio=0;end=endText(t.end);}
+ else{const v=timerValue(now);remaining=v.ms||0;if(state.mode==='deadline'){if(v.error){showError('timer-error',v.error);}else{showError('timer-error','');end=endText(v.end);}}else if(v.ms){end=endText(now+v.ms);}}
+ $('timer-readout').textContent=fmt(remaining);$('timer-mini').textContent=fmt(remaining);$('timer-status').textContent=status;$('timer-mini-status').textContent=status;$('timer-end').textContent=end;
+ ratio=Math.max(0,Math.min(100,ratio));$('progress-fill').style.width=`${ratio}%`;$('timer-progress').setAttribute('aria-valuenow',String(Math.round(ratio)));
+ const rv=intervalValue(),rem=r.running?Math.max(0,r.next-now):(rv.ms||0);$('reminder-readout').textContent=fmt(rem);$('reminder-mini').textContent=fmt(rem);$('reminder-status').textContent=r.running?'独立运行中':'未启动';$('reminder-mini-status').textContent=r.running?'运行中':'未启动';$('last-reminder').textContent=r.last?endText(r.last):'—';
+ if(t.status==='running')document.title=`${fmt(remaining)} · 此刻`;else if(r.running)document.title=`${fmt(rem)} · 下次提醒`;else document.title='此刻 · 计时器';
+}
+function applyLayout(){state.order.forEach((id,index)=>{const board=$('board');if(board.children[index]!==cards[id])board.insertBefore(cards[id],board.children[index]||null);});for(const id of ids){const card=cards[id],l=state.layout[id];card.style.setProperty('--span',l.span);card.style.setProperty('--height',l.height?`${l.height}px`:'auto');card.classList.toggle('collapsed',l.collapsed);const fold=card.querySelector('.fold'),title=card.querySelector('h2').textContent;fold.textContent=l.collapsed?'+':'−';fold.setAttribute('aria-expanded',String(!l.collapsed));fold.setAttribute('aria-label',(l.collapsed?'展开':'收起')+title);fold.title=l.collapsed?'展开':'收起';card.querySelector('.move-up').disabled=state.order.indexOf(id)===0;card.querySelector('.move-down').disabled=state.order.indexOf(id)===2;}}
+function move(id,delta){const i=state.order.indexOf(id),j=i+delta;if(j<0||j>=3)return;[state.order[i],state.order[j]]=[state.order[j],state.order[i]];applyLayout();save();}
+for(const id of ids){const card=cards[id];card.querySelector('.fold').onclick=()=>{state.layout[id].collapsed=!state.layout[id].collapsed;applyLayout();save();};card.querySelector('.move-up').onclick=()=>{move(id,-1);card.querySelector('.move-up').disabled?card.querySelector('.move-down').focus():card.querySelector('.move-up').focus();};card.querySelector('.move-down').onclick=()=>{move(id,1);card.querySelector('.move-down').disabled?card.querySelector('.move-up').focus():card.querySelector('.move-down').focus();};
+ const grip=card.querySelector('.grip');grip.addEventListener('pointerdown',event=>{if(event.button!==0||window.innerWidth<=1100)return;event.preventDefault();grip.setPointerCapture(event.pointerId);card.classList.add('dragging');document.body.classList.add('interacting');let target=null;
+  const track=e=>{const hit=document.elementFromPoint(e.clientX,e.clientY)?.closest('.card');for(const c of Object.values(cards))c.classList.remove('drop-target');target=hit&&hit!==card?hit:null;if(target)target.classList.add('drop-target');};
+  const finish=e=>{if(e.type==='pointerup'&&target){const from=state.order.indexOf(id),to=state.order.indexOf(target.dataset.card);state.order.splice(from,1);state.order.splice(to,0,id);applyLayout();save();}card.classList.remove('dragging');for(const c of Object.values(cards))c.classList.remove('drop-target');document.body.classList.remove('interacting');grip.removeEventListener('pointermove',track);grip.removeEventListener('pointerup',finish);grip.removeEventListener('pointercancel',finish);};
+  grip.addEventListener('pointermove',track);grip.addEventListener('pointerup',finish);grip.addEventListener('pointercancel',finish);
+ });
+ const handle=card.querySelector('.resize'),minSpan=id==='timer'?4:3;
+ handle.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const l=state.layout[id];if(e.key==='ArrowLeft')l.span=Math.max(minSpan,l.span-1);if(e.key==='ArrowRight')l.span=Math.min(12,l.span+1);if(e.key==='ArrowDown')l.height=Math.min(1200,(l.height||card.offsetHeight)+24);if(e.key==='ArrowUp')l.height=Math.max(0,(l.height||card.offsetHeight)-24);applyLayout();save();});
+ handle.addEventListener('pointerdown',event=>{if(event.button!==0||window.innerWidth<=1100)return;event.preventDefault();handle.setPointerCapture(event.pointerId);const l=state.layout[id],start={x:event.clientX,y:event.clientY,span:l.span,height:card.offsetHeight},unit=($('board').getBoundingClientRect().width+20)/12;card.classList.add('resizing');document.body.classList.add('interacting');
+  const track=e=>{l.span=Math.max(minSpan,Math.min(12,start.span+Math.round((e.clientX-start.x)/unit)));l.height=Math.max(0,Math.min(1200,Math.round((start.height+e.clientY-start.y)/24)*24));applyLayout();};
+  const finish=()=>{card.classList.remove('resizing');document.body.classList.remove('interacting');handle.removeEventListener('pointermove',track);handle.removeEventListener('pointerup',finish);handle.removeEventListener('pointercancel',finish);save();};handle.addEventListener('pointermove',track);handle.addEventListener('pointerup',finish);handle.addEventListener('pointercancel',finish);
+ });
+}
+$('restore-layout').onclick=()=>{state.layout=structuredClone(defaults);state.order=[...ids];applyLayout();save();toast('已恢复默认布局');};
+const offset=-new Date().getTimezoneOffset(),sign=offset>=0?'+':'−';$('timezone').textContent=`UTC${sign}${pad(Math.floor(Math.abs(offset)/60))}:${pad(Math.abs(offset)%60)}`;
+const media=matchMedia('(max-width:1100px)');function layoutHint(){$('layout-hint').textContent=media.matches?'↑ ↓ 调整顺序 · − 收起卡片':'拖动卡片左上角换位 · 右下角调整大小';}media.addEventListener('change',layoutHint);layoutHint();
+renderSound();renderControls();applyLayout();save();tick();setInterval(tick,200);document.addEventListener('visibilitychange',()=>{if(!document.hidden)tick();});window.addEventListener('pageshow',tick);
+})();
+</script>
+</body>
+</html>
+
