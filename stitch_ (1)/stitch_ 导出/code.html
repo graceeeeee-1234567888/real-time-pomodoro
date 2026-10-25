@@ -1,0 +1,1277 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="light" name="color-scheme"/>
+<title>计时器</title>
+<style>
+:root{
+  --bg:#f5f3ec;
+  --paper:#fffef9;
+  --ink:#293b36;
+  --muted:#6e7770;
+  --line:#dedfd4;
+  --green:#476b56;
+  --green-hover:#365640;
+  --soft:#eaf0e5;
+  --amber:#ae7843;
+  --amber-soft:#f6edde;
+  --amber-bar:#ebdec8;
+  --danger:#a23f32;
+  --shadow:0 6px 20px #283c300d;
+  --overtime-blue:#244b7a;
+  --overtime-bg:#e9f0f8;
+  --overtime-bar:#38659c;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 "Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+button,input,select{font:inherit}
+button{cursor:pointer}
+button,input,select{border:1px solid var(--line);border-radius:0px;background:var(--paper);color:var(--ink)}
+button{min-height:34px;padding:6px 12px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+button:hover:not(:disabled){background:var(--soft);border-color:#b8c8b4}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:2px solid #8aab73;outline-offset:2px}
+input,select{width:100%;min-height:38px;padding:6px 9px}
+input:disabled,select:disabled{background:#f3f3ed;color:var(--muted)}
+input[aria-invalid=true]{border-color:var(--danger)}
+input[type=number]{font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+h1,h2,p{margin:0}
+h1{font-size:22px;font-weight:650;letter-spacing:.04em}
+h2{font-size:15px;font-weight:650}
+small,.muted{color:var(--muted)}
+.shell{max-width:1420px;margin:auto;padding:24px 24px 18px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{display:grid;place-items:center;width:34px;height:34px;border:1px solid #bcc9b6;border-radius:0px;color:var(--green)}
+.brand-mark svg{width:20px;height:20px}
+.toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.toolbar button{font-size:12px;min-height:32px;padding:4px 10px;background:transparent}
+.toolbar button.icon-btn{width:32px;height:32px;padding:0;min-height:32px;position:relative}
+.toolbar .sound-on{background:var(--soft);border-color:#cad6c3;color:var(--green)}
+.save-state{font-size:12px;color:var(--muted);margin-right:6px}
+
+.board{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;align-items:start}
+.card{--span:4;grid-column:span var(--span);position:relative;min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:0px;box-shadow:var(--shadow);overflow:hidden;container-type:inline-size;transition:border-color .2s ease}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid #eeeee6}
+.heading{display:flex;align-items:center;gap:6px;min-width:0}
+.card-tools{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.icon{width:26px;height:26px;min-height:26px;padding:0;display:grid;place-items:center;border:0;background:transparent;border-radius:0px;color:var(--muted);font-size:14px}
+.icon:hover:not(:disabled){background:#f0f1ea;color:var(--ink)}
+.icon svg{width:15px;height:15px;display:block}
+.pin-btn.pinned{color:var(--green);background:var(--soft)}
+.toggle-sec{font-size:11px;min-height:24px;padding:2px 6px;margin-right:2px;font-weight:500;border:1px solid var(--line);background:#faf9f4;color:var(--muted)}
+.toggle-sec.active{background:var(--soft);color:var(--green);border-color:#cad6c3}
+.grip{cursor:grab;touch-action:none;width:18px;color:#98a293;font-size:16px;letter-spacing:-2px;margin-left:-2px;margin-right:2px}
+.grip:active{cursor:grabbing}
+.body{padding:18px 18px 22px}
+.card[data-card=clock] .body{padding-top:20px}
+.card.collapsed .body,.card.collapsed .resize{display:none}
+.card.collapsed{min-height:0!important}
+.summary{display:none;padding:12px 16px;font-size:18px;font-weight:600;font-variant-numeric:tabular-nums;gap:8px;align-items:center;flex-wrap:wrap}
+.summary small{font-size:11px;font-weight:400}
+.collapsed .summary{display:flex}
+.resize{position:absolute;bottom:4px;right:5px;width:20px;height:20px;min-height:20px;padding:0;border:0;border-radius:0px;background:transparent;color:#9aa58f;cursor:nwse-resize;touch-action:none;font-size:16px}
+.card.dragging{opacity:.5}
+.card.drop-target{outline:2px dashed var(--green);outline-offset:3px}
+.card.resizing{outline:2px solid #9bb289}
+
+/* Typography */
+.numeral{font-family:"Segoe UI",Arial,system-ui,sans-serif;font-variant-numeric:tabular-nums;letter-spacing:-.035em;font-weight:700;line-height:1.05}
+.clock-time{font-size:clamp(40px,16cqw,68px);white-space:nowrap;margin:8px 0 10px;font-weight:750;letter-spacing:-.04em}
+.eyebrow{font-size:11px;color:var(--muted);letter-spacing:.04em}
+.date-line{font-size:13px;color:#495852}
+
+/* Tabs */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:3px;padding:3px;background:#eeefe7;border-radius:0px;margin-bottom:14px;position:relative}
+.tabs button{background:transparent;border:0;min-height:30px;padding:4px 6px;border-radius:0px;color:var(--muted);font-size:13px;transition:background-color .15s ease, color .15s ease}
+.tabs button[aria-pressed=true]{background:var(--paper);box-shadow:0 1px 4px #24372e0c;color:var(--ink);font-weight:600}
+
+/* Segment boxes */
+.fields{display:flex;gap:8px;align-items:end}
+.field{flex:1;min-width:0}
+.field label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px}
+.duration-inputs input{text-align:center;font-size:18px;height:40px}
+.segment-box{display:flex;align-items:center;border:1px solid var(--line);background:var(--paper);position:relative;height:38px}
+.segment-box:focus-within{outline:2px solid #8aab73;outline-offset:1px}
+.segment-box.invalid{border-color:var(--danger)}
+.segment-box input{border:0;outline:none;width:100%;text-align:center;height:100%;font-size:17px;padding:0 2px 0 6px;min-height:0;background:transparent}
+.segment-box span.unit{padding:0 8px 0 2px;color:var(--muted);font-size:12px;font-weight:500;user-select:none;flex-shrink:0}
+
+/* Deadline 50/50 alignment */
+.dl-form-row{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  column-gap:18px;
+  align-items:center;
+  width:100%;
+}
+.dl-date-group{
+  display:grid;
+  grid-template-columns:1.2fr 1fr 1fr;
+  gap:5px;
+  align-items:center;
+  min-width:0;
+}
+.dl-time-group{
+  display:flex;
+  gap:5px;
+  align-items:center;
+  min-width:0;
+  width:100%;
+}
+.dl-date-group .segment-box input,
+.dl-time-group .segment-box input{
+  font-size:15px;
+  padding:0 1px 0 4px;
+}
+.dl-date-group .segment-box span.unit,
+.dl-time-group .segment-box span.unit{
+  padding:0 5px 0 1px;
+  font-size:11px;
+}
+.dl-time-field{
+  flex:1 1 0%;
+  min-width:0;
+}
+.dl-time-group .sec-expand-wrapper{
+  display:flex;
+  align-items:center;
+  gap:5px;
+  flex:0 0 auto;
+  transition:flex .25s ease;
+}
+.dl-time-group.sec-open .sec-expand-wrapper{
+  flex:1 1 0%;
+  min-width:0;
+}
+.sec-field-container{
+  display:none;
+  width:100%;
+  min-width:0;
+  overflow:hidden;
+}
+.dl-time-group.sec-open .sec-field-container{
+  display:flex;
+  flex:1 1 0%;
+  min-width:0;
+  animation:secFadeIn .2s ease;
+}
+@keyframes secFadeIn {
+  from { opacity:0; transform:translateX(-4px); }
+  to { opacity:1; transform:translateX(0); }
+}
+
+/* Circular '秒' toggle button badge */
+.sec-badge-btn{
+  width:26px;
+  height:26px;
+  min-height:26px;
+  max-width:26px;
+  max-height:26px;
+  padding:0;
+  border-radius:50%;
+  background:#f4f5ee;
+  border:1px solid #cad1c0;
+  color:#556b5d;
+  font-size:11px;
+  font-weight:600;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  user-select:none;
+  box-sizing:border-box;
+  line-height:1;
+  transition:all .18s ease;
+  cursor:pointer;
+}
+.sec-badge-btn:hover:not(:disabled){
+  background:var(--soft);
+  color:var(--green);
+  border-color:var(--green);
+  transform:scale(1.05);
+}
+.sec-badge-btn.active{
+  background:var(--soft);
+  color:var(--green);
+  border-color:#8fac86;
+  box-shadow:0 0 0 1px #9fba96;
+}
+
+/* Compact quick preset buttons with refined "min" suffix */
+.quick{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:5px;
+  margin-top:9px;
+}
+.quick-buttons{
+  display:inline-flex;
+  gap:4px;
+}
+.quick-btn{
+  min-height:22px;
+  height:22px;
+  padding:0 7px;
+  font-size:11px;
+  font-weight:550;
+  line-height:1;
+  background:#f8f8f2;
+  border:1px solid #e1e3d7;
+  color:var(--muted);
+  border-radius:0px;
+  transition:all .15s ease;
+}
+.quick-btn:hover:not(:disabled){
+  background:#f0f2e8;
+  color:var(--ink);
+  border-color:#cad3c4;
+}
+.quick-unit-tag{
+  font-size:11px;
+  color:#8e968b;
+  font-weight:600;
+  letter-spacing:.02em;
+  padding-left:2px;
+  user-select:none;
+}
+
+.error{color:var(--danger);font-size:11px;min-height:16px;margin-top:6px}
+.readout{text-align:center;margin:14px 0 10px;padding:8px;transition:background-color .3s ease}
+.timer-time{font-size:clamp(44px,18cqw,72px);white-space:nowrap;transition:color .3s ease;font-weight:750;letter-spacing:-.045em}
+.readout .status{margin-top:6px;font-size:11px;color:var(--muted);min-height:16px}
+.progress{width:100%;height:5px;border-radius:0px;background:#e9ecdf;overflow:hidden;margin:10px 0 10px}
+.progress-fill{height:100%;width:100%;background:#89a773;border-radius:0px;transition:background-color .3s ease, width .25s linear}
+.card.is-overtime{border-color:#b9cbe0;box-shadow:0 6px 22px #19385c14}
+.card.is-overtime .readout{background:var(--overtime-bg)}
+.card.is-overtime .timer-time{color:var(--overtime-blue);font-weight:750}
+.card.is-overtime .progress-fill{background:var(--overtime-bar)}
+.card.is-overtime #timer-mini{color:var(--overtime-blue)}
+
+/* End-line: tightly grouped together on the right */
+.end-line-wrap{
+  min-height:18px;
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  font-size:11.5px;
+  color:var(--muted);
+  margin-top:4px;
+}
+.end-line-wrap[hidden]{
+  display:none !important;
+}
+.end-line-text{
+  display:inline-flex;
+  align-items:center;
+  gap:2px;
+  letter-spacing:.02em;
+}
+.end-line-text .lbl{color:#7a847d}
+.end-line-text .val{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+
+/* Action Buttons with SVG micro-interactions */
+.actions{display:flex;gap:8px;margin-top:14px}
+.actions button{
+  flex:1;
+  min-height:38px;
+  border-radius:0px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  font-size:13.5px;
+  letter-spacing:.02em;
+  transition:background-color .15s ease, border-color .15s ease, transform .1s ease;
+}
+.actions button:active:not(:disabled){transform:scale(0.99)}
+.primary{background:var(--green);color:white;border-color:var(--green)}
+.primary:hover:not(:disabled){background:var(--green-hover);color:white;border-color:var(--green-hover)}
+.primary svg{fill:currentColor;width:15px;height:15px;transition:transform .2s ease}
+.btn-reset svg{
+  width:15px;
+  height:15px;
+  stroke:currentColor;
+  transition:transform .35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.btn-reset.spin-once svg{
+  transform:rotate(-360deg);
+}
+
+/* Reminder Card with Progress Track */
+.reminder-interval{align-items:stretch}
+.reminder-interval input{font-size:18px}
+.reminder-interval select{font-size:13px}
+.reminder-interval .field:first-child{flex:1.4}
+.reminder-time{font-size:clamp(38px,15cqw,58px);white-space:nowrap;font-weight:750;letter-spacing:-.04em}
+
+/* Integrated progress surface inside .reminder-readout */
+.reminder-readout{
+  position:relative;
+  padding:14px 12px;
+  margin:14px 0 0;
+  text-align:center;
+  border:1px solid #eddcc6;
+  border-radius:0px;
+  overflow:hidden;
+  background:#faf7f0;
+}
+.reminder-bar-fill{
+  position:absolute;
+  top:0;
+  left:0;
+  bottom:0;
+  width:0%;
+  background:var(--amber-soft);
+  transition:width .25s linear;
+  z-index:0;
+  pointer-events:none;
+}
+.reminder-content-layer{
+  position:relative;
+  z-index:1;
+}
+.reminder-readout .eyebrow{margin-bottom:6px;color:#7d684e;font-weight:600}
+.reminder-readout .status{font-size:11px;color:#7d684e;margin-top:6px}
+.last-reminder{display:flex;justify-content:space-between;gap:10px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:12px;margin-top:16px}
+.footer{font-size:11px;color:var(--muted);margin-top:20px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+
+.toast-region{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;width:min(420px,calc(100% - 24px));display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast{background:#304b3b;color:white;padding:12px 18px;border-radius:0px;box-shadow:0 6px 24px #17231c25;font-size:13px}
+.toast.error-toast{background:#8d473a}
+[hidden]{display:none!important}
+body.interacting{user-select:none}
+
+@media(min-width:1101px){.card{min-height:var(--height,auto)}}
+@media(max-width:1100px) and (min-width:769px){
+  .shell{max-width:720px;padding:20px 16px}
+  .board{grid-template-columns:1fr}
+  .card{grid-column:1!important;min-height:0!important}
+  .resize,.grip{display:none}
+  .top{align-items:flex-start;margin-bottom:18px}
+  .save-state{display:none}
+}
+
+/* Mobile responsive */
+@media(max-width:768px){
+  html,body{height:100%;overflow-x:hidden}
+  .shell{padding:10px 10px 8px;min-height:100vh;display:flex;flex-direction:column;justify-content:space-between}
+  .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px}
+  .brand{gap:6px}
+  .brand-mark{width:26px;height:26px}
+  .brand-mark svg{width:16px;height:16px}
+  h1{font-size:17px;font-weight:700}
+  .save-state{display:none}
+  .toolbar{gap:4px;flex-wrap:nowrap}
+  .toolbar button{font-size:10.5px;min-height:26px;padding:2px 6px;line-height:1.2}
+  .toolbar button.icon-btn{width:26px;height:26px;min-height:26px;padding:0}
+  .toolbar button.icon-btn svg{width:14px;height:14px}
+  .board{display:flex;flex-direction:column;gap:8px;flex:1}
+  .card{grid-column:1/-1!important;min-height:0!important;border-radius:0px}
+  .card-head{padding:6px 10px}
+  .card-head h2{font-size:13px}
+  .grip,.resize{display:none}
+  .icon{width:22px;height:22px;min-height:22px;font-size:12px}
+  .icon svg{width:13px;height:13px}
+  .toggle-sec{font-size:10px;min-height:20px;padding:1px 5px;margin-right:2px}
+  .body{padding:8px 10px 10px}
+  .card[data-card=clock] .body{padding-top:8px}
+  .tabs{margin-bottom:8px;padding:2px}
+  .tabs button{min-height:26px;font-size:11.5px;padding:2px}
+  .dl-form-row{column-gap:8px}
+  .dl-date-group,.dl-time-group{gap:3px}
+  .segment-box{height:30px;min-height:30px}
+  .segment-box input{min-height:30px;height:30px;font-size:13px;padding:0 1px 0 2px}
+  .segment-box span.unit{font-size:10px;padding:0 3px 0 0}
+  .sec-badge-btn{width:22px;height:22px;min-height:22px;max-width:22px;max-height:22px;font-size:10px}
+  .quick{margin-top:6px}
+  .quick-btn{min-height:20px;height:20px;padding:0 5px;font-size:10px}
+  .quick-unit-tag{font-size:10px}
+  .error{min-height:14px;font-size:10.5px;margin-top:3px;line-height:1.2}
+  .readout{margin:4px 0 4px;padding:2px}
+  .timer-time{font-size:clamp(30px,9vw,38px);font-weight:800;line-height:1.02}
+  .readout .status{margin-top:2px;font-size:10px;min-height:13px}
+  .progress{margin:5px 0 4px;height:4px}
+  .end-line-wrap{min-height:16px;font-size:10px;margin-top:2px}
+  .actions{margin-top:6px;gap:5px}
+  .actions button{min-height:30px;font-size:12px;padding:3px 6px}
+  .reminder-interval{gap:6px}
+  .reminder-interval input{height:30px;min-height:30px;font-size:14px}
+  .reminder-interval select{height:30px;min-height:30px;font-size:12px;padding:2px 4px}
+  .reminder-readout{margin:6px 0 0;padding:6px 8px}
+  .reminder-readout .eyebrow{margin-bottom:2px;font-size:10px}
+  .reminder-time{font-size:clamp(26px,8vw,34px);font-weight:800;line-height:1.02}
+  .reminder-readout .status{margin-top:2px;font-size:10px}
+  .last-reminder{margin-top:6px;padding-top:6px;font-size:10px}
+  .clock-time{font-size:clamp(28px,8.5vw,36px);margin:2px 0 4px;font-weight:800;line-height:1.02}
+  .date-line{font-size:11px}
+  .footer{margin-top:8px;font-size:9.5px;padding-bottom:4px}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="top">
+<div class="brand">
+<span aria-hidden="true" class="brand-mark">
+<svg fill="none" stroke="currentColor" stroke-width="1.6" viewbox="0 0 24 24"><rect height="18" width="18" x="3" y="3"></rect><path d="M12 6v6l4 2"></path></svg>
+</span>
+<h1 class="">计时器</h1>
+</div>
+<div class="toolbar">
+<span class="save-state" id="save-state">本次使用不保存</span>
+<button aria-label="声音开启，点击静音" aria-pressed="true" class="icon-btn sound-on" id="sound" title="声音开启 (点击静音)"><span id="sound-icon-slot"><svg fill="none" height="17" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewbox="0 0 24 24" width="17"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg></span></button>
+<button class="" id="test-sound">试听</button>
+<button class="" id="restore-layout">默认布局</button>
+</div>
+</header>
+<main aria-label="计时器功能卡片" class="board" id="board">
+<!-- Card 1: Timer -->
+<section aria-labelledby="timer-title" class="card" data-card="timer" style="--span: 5; --height: auto;">
+<header class="card-head">
+<div class="heading"><span aria-hidden="true" class="grip" title="拖动卡片">⠿</span><h2 class="" id="timer-title">倒计时</h2></div>
+<div class="card-tools">
+<button aria-label="专注 倒计时" class="icon pin-btn" title="专注单卡片（固定最大化）"><svg class="pin-icon" fill="none" stroke="currentColor" stroke-width="1.6" viewbox="0 0 24 24"><path d="M9 3h6m-3 8v10M8 5l1 6h6l1-6H8z" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+<button aria-label="倒计时上移" class="icon move-up" disabled="" title="上移">↑</button>
+<button aria-label="倒计时下移" class="icon move-down" title="下移">↓</button>
+<button aria-controls="timer-body" aria-expanded="true" aria-label="收起倒计时" class="icon fold" title="收起">−</button>
+</div>
+</header>
+<div class="summary"><span class="" id="timer-mini">00:24:58</span><small id="timer-mini-status">待开始</small></div>
+<div class="body" id="timer-body">
+<div aria-label="倒计时方式" class="tabs" role="group">
+<button aria-pressed="true" class="" id="mode-duration">时长</button>
+<button aria-pressed="false" class="" id="mode-deadline">定点</button>
+</div>
+<!-- Duration Panel -->
+<div id="duration-panel">
+<div class="fields duration-inputs" style="gap: 8px;">
+<div class="field"><div class="segment-box"><input aria-describedby="timer-error" aria-invalid="false" class="steppable" data-max="999" data-min="0" data-pad="0" id="hours" inputmode="numeric" max="999" min="0" step="1" type="number" value="0"/><span class="unit">时</span></div></div>
+<div class="field"><div class="segment-box"><input aria-describedby="timer-error" aria-invalid="false" class="steppable" data-max="59" data-min="0" data-pad="2" id="minutes" inputmode="numeric" max="59" min="0" step="1" type="number" value="25"/><span class="unit">分</span></div></div>
+<div class="field"><div class="segment-box"><input aria-describedby="timer-error" aria-invalid="false" class="steppable" data-max="59" data-min="0" data-pad="2" id="seconds" inputmode="numeric" max="59" min="0" step="1" type="number" value="0"/><span class="unit">秒</span></div></div>
+</div>
+<div aria-label="快捷时长" class="quick">
+<div class="quick-buttons">
+<button class="quick-btn" data-minutes="5" type="button">+5</button>
+<button class="quick-btn" data-minutes="15" type="button">+15</button>
+<button class="quick-btn" data-minutes="25" type="button">+25</button>
+</div>
+<span class="quick-unit-tag">min</span>
+</div>
+</div>
+<!-- Deadline Panel -->
+<div hidden="" id="deadline-panel">
+<div class="dl-form-row">
+<!-- Date Group: Perfectly ends at 50% line -->
+<div class="dl-date-group">
+<div class="field"><div class="segment-box" id="box-dl-year"><input aria-describedby="timer-error" class="steppable" data-max="2099" data-min="2024" data-pad="4" id="dl-year" inputmode="numeric" max="2099" min="2024" type="number" value="2026"/><span class="unit">年</span></div></div>
+<div class="field"><div class="segment-box" id="box-dl-month"><input aria-describedby="timer-error" class="steppable" data-max="12" data-min="1" data-pad="2" id="dl-month" inputmode="numeric" max="12" min="1" type="number" value="10"/><span class="unit">月</span></div></div>
+<div class="field"><div class="segment-box" id="box-dl-day"><input aria-describedby="timer-error" class="steppable" data-max="31" data-min="1" data-pad="2" id="dl-day" inputmode="numeric" max="31" min="1" type="number" value="25"/><span class="unit">日</span></div></div>
+</div>
+<!-- Time Group: Equal width hour, minute, second -->
+<div class="dl-time-group" id="dl-time-group">
+<div class="dl-time-field"><div class="segment-box" id="box-dl-hour"><input aria-describedby="timer-error" class="steppable" data-max="23" data-min="0" data-pad="2" id="dl-hour" inputmode="numeric" max="23" min="0" type="number" value="21"/><span class="unit">时</span></div></div>
+<div class="dl-time-field"><div class="segment-box" id="box-dl-minute"><input aria-describedby="timer-error" class="steppable" data-max="59" data-min="0" data-pad="2" id="dl-minute" inputmode="numeric" max="59" min="0" type="number" value="30"/><span class="unit">分</span></div></div>
+<div class="sec-expand-wrapper" id="sec-expand-wrapper">
+<div class="sec-field-container" id="sec-field-container">
+<div class="segment-box" id="box-dl-second" style="width:100%"><input aria-describedby="timer-error" class="steppable" data-max="59" data-min="0" data-pad="2" id="dl-second" inputmode="numeric" max="59" min="0" type="number" value="00"/><span class="unit">秒</span></div>
+</div>
+<button aria-expanded="false" aria-label="切换秒数输入" class="sec-badge-btn" id="sec-toggle-btn" title="显示秒数" type="button">秒</button>
+</div>
+</div>
+</div>
+</div>
+<p aria-live="polite" class="error" id="timer-error"></p>
+<div class="readout"><div aria-label="剩余时间" class="timer-time numeral" id="timer-readout" role="timer">00:24:58</div></div>
+<div aria-label="剩余进度" aria-valuemax="100" aria-valuemin="0" aria-valuenow="100" class="progress" id="timer-progress" role="progressbar"><div class="progress-fill" id="progress-fill" style="width: 100%;"></div></div>
+<!-- End Line: Shown only in duration mode, tightly adjacent text -->
+<div class="end-line-wrap" id="timer-end-wrap">
+<span class="end-line-text"><span class="lbl">结束：</span><span class="val" id="timer-end">10月25日 22:35:24</span></span>
+</div>
+<div class="actions">
+<button class="primary" id="timer-start" title="暂停倒计时">
+<span id="timer-btn-icon"><svg viewbox="0 0 24 24"><path d="M7 5.5v13a1 1 0 0 0 1.55.83l10.5-6.5a1 1 0 0 0 0-1.66l-10.5-6.5A1 1 0 0 0 7 5.5z"></path></svg></span>
+<span id="timer-btn-label">开始</span>
+</button>
+<button class="btn-reset" id="timer-reset" title="重置倒计时">
+<!-- Rotate/Cycle SVG -->
+<svg fill="none" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+<span class="" id="timer-reset-label">重置</span>
+</button>
+</div>
+</div>
+<button aria-label="调整倒计时卡片大小" class="resize" title="拖动调整大小；方向键也可调整">⌟</button>
+</section>
+<!-- Card 2: Interval Reminder -->
+<section aria-labelledby="reminder-title" class="card" data-card="reminder" style="--span: 4; --height: auto;">
+<header class="card-head">
+<div class="heading"><span aria-hidden="true" class="grip" title="拖动卡片">⠿</span><h2 class="" id="reminder-title">间隔提醒</h2></div>
+<div class="card-tools">
+<button aria-label="专注 间隔提醒" class="icon pin-btn" title="专注单卡片（固定最大化）"><svg class="pin-icon" fill="none" stroke="currentColor" stroke-width="1.6" viewbox="0 0 24 24"><path d="M9 3h6m-3 8v10M8 5l1 6h6l1-6H8z" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+<button aria-label="间隔提醒上移" class="icon move-up" title="上移">↑</button>
+<button aria-label="间隔提醒下移" class="icon move-down" title="下移">↓</button>
+<button aria-controls="reminder-body" aria-expanded="true" aria-label="收起间隔提醒" class="icon fold" title="收起">−</button>
+</div>
+</header>
+<div class="summary"><span class="" id="reminder-mini">00:05:00</span><small id="reminder-mini-status">未启动</small></div>
+<div class="body" id="reminder-body">
+<div class="fields reminder-interval">
+<div class="field"><label class="" for="interval-value">每隔</label><input aria-describedby="reminder-error" aria-invalid="false" class="steppable" data-max="999" data-min="1" id="interval-value" inputmode="numeric" max="999" min="1" step="1" type="number" value="5"/></div>
+<div class="field"><label for="interval-unit"> </label><select id="interval-unit"><option value="1000">秒</option><option selected="" value="60000">分钟</option><option value="3600000">小时</option></select></div>
+</div>
+<p aria-live="polite" class="error" id="reminder-error"></p>
+<!-- Progress-enhanced Reminder Box -->
+<div class="reminder-readout">
+<div class="reminder-bar-fill" id="reminder-bar-fill"></div>
+<div class="reminder-content-layer">
+<p class="eyebrow">下次提醒</p>
+<div aria-label="距离下次提醒" class="reminder-time numeral" id="reminder-readout" role="timer">00:05:00</div>
+<p class="status" id="reminder-status">未启动</p>
+</div>
+</div>
+<div class="actions"><button class="primary" id="reminder-toggle">启动提醒</button></div>
+<div class="last-reminder"><span class="">最近提醒</span><span class="" id="last-reminder">—</span></div>
+</div>
+<button aria-label="调整间隔提醒卡片大小" class="resize" title="拖动调整大小；方向键也可调整">⌟</button>
+</section>
+<!-- Card 3: Clock -->
+<section aria-labelledby="clock-title" class="card" data-card="clock" style="--span: 3; --height: auto;">
+<header class="card-head">
+<div class="heading"><span aria-hidden="true" class="grip" title="拖动卡片">⠿</span><h2 class="" id="clock-title">时钟</h2></div>
+<div class="card-tools">
+<button class="toggle-sec" id="toggle-seconds" title="切换秒数显示">隐藏秒</button>
+<button aria-label="专注 时钟" class="icon pin-btn" title="专注单卡片（固定最大化）"><svg class="pin-icon" fill="none" stroke="currentColor" stroke-width="1.6" viewbox="0 0 24 24"><path d="M9 3h6m-3 8v10M8 5l1 6h6l1-6H8z" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>
+<button aria-label="时钟卡片上移" class="icon move-up" title="上移">↑</button>
+<button aria-label="时钟卡片下移" class="icon move-down" disabled="" title="下移">↓</button>
+<button aria-controls="clock-body" aria-expanded="true" aria-label="收起时钟" class="icon fold" title="收起">−</button>
+</div>
+</header>
+<div class="summary"><span class="" id="clock-mini">22:15:20</span></div>
+<div class="body" id="clock-body">
+<div aria-label="当前时间" class="clock-time numeral" id="clock-time" role="timer">22:15:20</div>
+<p class="date-line" id="clock-date">2026-10-25 星期日</p>
+</div>
+<button aria-label="调整时钟卡片大小" class="resize" title="拖动调整大小；方向键也可调整">⌟</button>
+</section>
+</main>
+<footer class="footer">
+<span class="">请保持页面打开，以接收提醒。</span>
+<span class="" id="layout-hint">大头针专注 · 拖动左上角换位 · 右下角调整大小</span>
+</footer>
+</div>
+<div aria-atomic="false" aria-live="polite" class="toast-region" id="toasts" role="status"></div>
+<script>
+'use strict';
+(() => {
+const $ = id => document.getElementById(id);
+const KEY = 'adhd-timer-v1';
+const ids = ['clock','timer','reminder'];
+const defaults = {clock:{span:3,height:0,collapsed:false},timer:{span:5,height:0,collapsed:false},reminder:{span:4,height:0,collapsed:false}};
+const localDate = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const pad = n => String(n).padStart(2,'0');
+const fmt = (ms, prefix='') => {
+ const s = Math.max(0, Math.floor(ms / 1000));
+ return `${prefix}${pad(Math.floor(s/3600))}:${pad(Math.floor(s/60)%60)}:${pad(s%60)}`;
+};
+const timeText = (d, showSec=true) => showSec ? `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}` : `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const endText = ms => {const d=new Date(ms);return `${d.getMonth()+1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;};
+const weekDays = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+const nextInit = new Date(Date.now() + 3600000);
+
+let state = {
+ sound: true,
+ showSeconds: true,
+ showDlSeconds: false,
+ mode: 'duration',
+ pinnedCard: null,
+ settings: {
+  hours:'0',minutes:'25',seconds:'0',
+  dlYear: String(nextInit.getFullYear()),
+  dlMonth: pad(nextInit.getMonth()+1),
+  dlDay: pad(nextInit.getDate()),
+  dlHour: pad(nextInit.getHours()),
+  dlMinute: pad(nextInit.getMinutes()),
+  dlSecond: '00',
+  interval:'5',unit:'60000'
+ },
+ timer: {status:'idle',mode:'duration',end:0,total:0,remaining:0,notified:false},
+ reminder: {running:false,interval:300000,next:0,last:0},
+ layout: structuredClone(defaults),
+ order: ['timer','reminder','clock']
+};
+
+let storageOK = true;
+try {
+ const raw = localStorage.getItem(KEY);
+ if (raw) {
+  const saved = JSON.parse(raw);
+  if (saved && typeof saved === 'object') {
+   if (typeof saved.sound === 'boolean') state.sound = saved.sound;
+   if (typeof saved.showSeconds === 'boolean') state.showSeconds = saved.showSeconds;
+   if (typeof saved.showDlSeconds === 'boolean') state.showDlSeconds = saved.showDlSeconds;
+   if (['duration','deadline'].includes(saved.mode)) state.mode = saved.mode;
+   if (ids.includes(saved.pinnedCard)) state.pinnedCard = saved.pinnedCard;
+   for (const key of Object.keys(state.settings)) if (typeof saved.settings?.[key] === 'string') state.settings[key] = saved.settings[key];
+   if (saved.timer && ['idle','running','paused','overtime'].includes(saved.timer.status)) {
+    state.timer = saved.timer;
+   }
+   if (saved.reminder && typeof saved.reminder.running === 'boolean') state.reminder = saved.reminder;
+   if (Array.isArray(saved.order) && saved.order.length === 3 && saved.order.every(k => ids.includes(k))) state.order = saved.order;
+   for (const id of ids) {
+    const item = saved.layout?.[id];
+    if (item) state.layout[id] = {span:Math.max(id==='timer'?4:3,Math.min(12,Math.round(Number(item.span)||defaults[id].span))),height:Math.max(0,Math.min(1200,Number(item.height)||0)),collapsed:item.collapsed===true};
+   }
+  }
+ }
+} catch { storageOK = false; }
+
+function save() {
+ try { localStorage.setItem(KEY, JSON.stringify(state)); storageOK = true; }
+ catch { storageOK = false; }
+ $('save-state').textContent = storageOK ? '自动保存' : '本次使用不保存';
+}
+
+const inputMap = {
+ hours:'hours',minutes:'minutes',seconds:'seconds',
+ 'dl-year':'dlYear','dl-month':'dlMonth','dl-day':'dlDay','dl-hour':'dlHour','dl-minute':'dlMinute','dl-second':'dlSecond',
+ 'interval-value':'interval','interval-unit':'unit'
+};
+for (const [id,key] of Object.entries(inputMap)) {
+ if ($(id)) $(id).value = state.settings[key] ?? $(id).value;
+}
+
+const cards = Object.fromEntries(ids.map(id => [id, document.querySelector(`[data-card="${id}"]`)]));
+
+function toast(message, error=false) {
+ const el = document.createElement('div');
+ el.className = 'toast' + (error ? ' error-toast' : '');
+ el.textContent = message;
+ $('toasts').append(el);
+ setTimeout(() => el.remove(), 4000);
+}
+
+let audio;
+async function unlockAudio() {
+ if (!state.sound) return false;
+ try {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) throw new Error();
+  if (!audio) audio = new AC();
+  if (audio.state !== 'running') await audio.resume();
+  return audio.state === 'running';
+ } catch { return false; }
+}
+
+function chime() {
+ if (!state.sound || !audio || audio.state !== 'running') return false;
+ try {
+  const now = audio.currentTime;
+  [0, 0.22].forEach((offset, i) => {
+   const osc = audio.createOscillator(), gain = audio.createGain();
+   osc.type = 'sine';
+   osc.frequency.value = i ? 784 : 659.25;
+   gain.gain.setValueAtTime(0, now + offset);
+   gain.gain.linearRampToValueAtTime(0.12, now + offset + 0.025);
+   gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.55);
+   osc.connect(gain); gain.connect(audio.destination);
+   osc.start(now + offset); osc.stop(now + offset + 0.6);
+  });
+  return true;
+ } catch { return false; }
+}
+
+function notify(message) {
+ const played = chime();
+ toast(message + (state.sound && !played ? ' · 点击试听开启声音' : ''));
+}
+
+/* Speaker & Mute Icons */
+const iconSoundOn = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>';
+const iconSoundOff = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>';
+
+function renderSound() {
+ const btn = $('sound');
+ btn.innerHTML = `<span id="sound-icon-slot">${state.sound ? iconSoundOn : iconSoundOff}</span>`;
+ btn.setAttribute('aria-pressed', String(state.sound));
+ btn.setAttribute('aria-label', state.sound ? '声音开启，点击静音' : '声音静音，点击开启');
+ btn.title = state.sound ? '声音开启 (点击静音)' : '已静音 (点击开启)';
+ btn.classList.toggle('sound-on', state.sound);
+}
+$('sound').onclick = () => { state.sound = !state.sound; renderSound(); save(); if(state.sound) unlockAudio(); };
+$('test-sound').onclick = async () => { if (!state.sound) { toast('声音已关闭'); return; } await unlockAudio(); if (!chime()) toast('当前浏览器无法播放提示音', true); };
+
+function renderSecondsToggle() {
+ const btn = $('toggle-seconds');
+ btn.textContent = state.showSeconds ? '隐藏秒' : '显示秒';
+ btn.classList.toggle('active', !state.showSeconds);
+}
+$('toggle-seconds').onclick = () => {
+ state.showSeconds = !state.showSeconds;
+ renderSecondsToggle();
+ save();
+ tick();
+};
+
+/* Expandable & Collapsible Seconds Toggle for Deadline */
+function renderDlSecondsUI() {
+ const timeGroup = $('dl-time-group');
+ const btn = $('sec-toggle-btn');
+ if (!timeGroup || !btn) return;
+ timeGroup.classList.toggle('sec-open', state.showDlSeconds);
+ btn.classList.toggle('active', state.showDlSeconds);
+ btn.setAttribute('aria-expanded', String(state.showDlSeconds));
+ btn.title = state.showDlSeconds ? '隐藏秒数' : '显示秒数';
+ btn.setAttribute('aria-label', state.showDlSeconds ? '收起秒数输入' : '展开秒数输入');
+}
+
+$('sec-toggle-btn').onclick = () => {
+ state.showDlSeconds = !state.showDlSeconds;
+ renderDlSecondsUI();
+ save();
+ if (state.showDlSeconds) {
+  setTimeout(() => $('dl-second')?.focus(), 50);
+ }
+ tick();
+};
+
+document.addEventListener('pointerdown', () => { if (state.sound) unlockAudio(); }, {once: true});
+document.addEventListener('keydown', () => { if (state.sound) unlockAudio(); }, {once: true});
+
+function getDaysInMonth(year, month) {
+ return new Date(year, month, 0).getDate();
+}
+
+function clampStep(input, delta) {
+ const min = Number(input.dataset.min ?? 0);
+ const max = Number(input.dataset.max ?? 999);
+ const padLen = Number(input.dataset.pad ?? 0);
+ let val = parseInt(input.value, 10);
+ if (isNaN(val)) val = min;
+ let nextVal = val + delta;
+ if (nextVal > max) nextVal = min;
+ else if (nextVal < min) nextVal = max;
+ input.value = padLen ? String(nextVal).padStart(padLen, '0') : String(nextVal);
+ input.dispatchEvent(new Event('input', {bubbles: true}));
+}
+
+document.querySelectorAll('.steppable').forEach(el => {
+ el.addEventListener('keydown', e => {
+  if (e.key === 'ArrowUp') {
+   e.preventDefault();
+   clampStep(el, 1);
+  } else if (e.key === 'ArrowDown') {
+   e.preventDefault();
+   clampStep(el, -1);
+  }
+ });
+ el.addEventListener('wheel', e => {
+  if (document.activeElement === el || el.matches(':hover')) {
+   e.preventDefault();
+   clampStep(el, e.deltaY < 0 ? 1 : -1);
+  }
+ }, {passive: false});
+});
+
+function durationValue() {
+ const values = ['hours','minutes','seconds'].map(id => $(id).value.trim());
+ const ns = values.map(Number);
+ if (values.some(v => !/^\d+$/.test(v)) || ns[0]>999 || ns[1]>59 || ns[2]>59) return {error:'请输入有效时长：时 0–999，分和秒 0–59。'};
+ const ms = (ns[0]*3600 + ns[1]*60 + ns[2]) * 1000;
+ return ms > 0 ? {ms} : {error:'请设置大于 0 的时长。'};
+}
+
+function deadlineValue(now) {
+ const y = parseInt($('dl-year').value, 10);
+ const m = parseInt($('dl-month').value, 10);
+ const d = parseInt($('dl-day').value, 10);
+ const h = parseInt($('dl-hour').value, 10);
+ const min = parseInt($('dl-minute').value, 10);
+ const sInput = $('dl-second');
+ const s = (sInput && state.showDlSeconds) ? (parseInt(sInput.value, 10) || 0) : 0;
+ 
+ if ([y,m,d,h,min].some(isNaN)) return {error:'请输入完整的目标日期和时刻。'};
+ if (m < 1 || m > 12) return {error:'月份必须为 1–12。'};
+ const maxDay = getDaysInMonth(y, m);
+ if (d < 1 || d > maxDay) return {error:`${y}年${m}月最多只有 ${maxDay} 天。`};
+ if (h < 0 || h > 23 || min < 0 || min > 59) return {error:'小时应为 0–23，分钟应为 0–59。'};
+ if (s < 0 || s > 59) return {error:'秒应为 0–59。'};
+
+ const target = new Date(y, m - 1, d, h, min, s, 0);
+ const end = target.getTime();
+ if (isNaN(end)) return {error:'目标时间无效。'};
+ if (end <= now) return {error:'休恋逝水，请调整为未来时刻'};
+ return {ms: end - now, end};
+}
+
+function intervalValue() {
+ const raw = $('interval-value').value.trim(), n = Number(raw), unit = Number($('interval-unit').value);
+ return /^\d+$/.test(raw) && n >= 1 && n <= 999 && [1000,60000,3600000].includes(unit) ? {ms: n*unit} : {error:'请输入 1–999 的整数。'};
+}
+
+function timerValue(now=Date.now()) { return state.mode === 'duration' ? durationValue() : deadlineValue(now); }
+
+function showError(id, message) {
+ $(id).textContent = message || '';
+ const dlBoxes = ['box-dl-year','box-dl-month','box-dl-day','box-dl-hour','box-dl-minute','box-dl-second'].map(b => $(b)).filter(Boolean);
+ if (id === 'timer-error') {
+  if (state.mode === 'duration') {
+   for (const i of ['hours','minutes','seconds']) $(i).setAttribute('aria-invalid', String(Boolean(message)));
+   dlBoxes.forEach(b => b.classList.remove('invalid'));
+  } else {
+   dlBoxes.forEach(b => b.classList.toggle('invalid', Boolean(message)));
+   for (const i of ['hours','minutes','seconds']) $(i).setAttribute('aria-invalid', 'false');
+  }
+ } else {
+  $('interval-value').setAttribute('aria-invalid', String(Boolean(message)));
+ }
+}
+
+const playIconSvg = '<svg viewBox="0 0 24 24"><path d="M7 5.5v13a1 1 0 0 0 1.55.83l10.5-6.5a1 1 0 0 0 0-1.66l-10.5-6.5A1 1 0 0 0 7 5.5z"/></svg>';
+const pauseIconSvg = '<svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
+const checkIconSvg = '<svg fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>';
+
+function renderControls() {
+ const t = state.timer, locked = t.status === 'running' || t.status === 'paused' || t.status === 'overtime';
+ $('duration-panel').hidden = state.mode !== 'duration';
+ $('deadline-panel').hidden = state.mode !== 'deadline';
+ $('mode-duration').setAttribute('aria-pressed', String(state.mode === 'duration'));
+ $('mode-deadline').setAttribute('aria-pressed', String(state.mode === 'deadline'));
+ $('mode-duration').disabled = locked;
+ $('mode-deadline').disabled = locked;
+ for (const id of ['hours','minutes','seconds','dl-year','dl-month','dl-day','dl-hour','dl-minute','dl-second','sec-toggle-btn']) {
+  if ($(id)) $(id).disabled = locked;
+ }
+ document.querySelectorAll('.quick-btn').forEach(b => b.disabled = locked);
+ 
+ const startBtn = $('timer-start');
+ const iconSlot = $('timer-btn-icon');
+ const labelSlot = $('timer-btn-label');
+ const resetLabel = $('timer-reset-label');
+
+ if (t.status === 'overtime') {
+  startBtn.hidden = false;
+  iconSlot.innerHTML = checkIconSvg;
+  labelSlot.textContent = '完成';
+  startBtn.title = '完成倒计时并重置';
+  resetLabel.textContent = '重置';
+ } else if (t.status === 'running') {
+  startBtn.hidden = (t.mode === 'deadline');
+  iconSlot.innerHTML = pauseIconSvg;
+  labelSlot.textContent = '暂停';
+  startBtn.title = '暂停倒计时';
+  resetLabel.textContent = (t.mode === 'deadline') ? '取消' : '重置';
+ } else if (t.status === 'paused') {
+  startBtn.hidden = false;
+  iconSlot.innerHTML = playIconSvg;
+  labelSlot.textContent = '继续';
+  startBtn.title = '继续倒计时';
+  resetLabel.textContent = '重置';
+ } else {
+  startBtn.hidden = false;
+  iconSlot.innerHTML = playIconSvg;
+  labelSlot.textContent = '开始';
+  startBtn.title = '开始倒计时';
+  resetLabel.textContent = '重置';
+ }
+
+ $('interval-value').disabled = state.reminder.running;
+ $('interval-unit').disabled = state.reminder.running;
+ $('reminder-toggle').textContent = state.reminder.running ? '停止提醒' : '启动提醒';
+}
+
+function setMode(mode) {
+ if (['running','paused','overtime'].includes(state.timer.status)) return;
+ state.mode = mode;
+ state.timer.status = 'idle';
+ showError('timer-error','');
+ renderControls();
+ save();
+ tick();
+}
+$('mode-duration').onclick = () => setMode('duration');
+$('mode-deadline').onclick = () => setMode('deadline');
+
+for (const [id,key] of Object.entries(inputMap)) {
+ const el = $(id);
+ if (!el) continue;
+ el.addEventListener('input', () => {
+  state.settings[key] = el.value;
+  const isReminder = id.startsWith('interval');
+  if (!isReminder && !['running','paused','overtime'].includes(state.timer.status)) state.timer.status = 'idle';
+  showError(isReminder ? 'reminder-error' : 'timer-error', '');
+  save();
+  tick();
+ });
+}
+
+document.querySelectorAll('.quick-btn').forEach(b => b.onclick = () => {
+ for (const [id,value] of Object.entries({hours:'0',minutes:b.dataset.minutes,seconds:'0'})) {
+  $(id).value = value;
+  state.settings[id] = value;
+ }
+ state.timer.status = 'idle';
+ showError('timer-error','');
+ save();
+ tick();
+});
+
+$('timer-start').onclick = () => {
+ const t = state.timer, now = Date.now();
+ unlockAudio();
+ if (t.status === 'overtime') {
+  t.status = 'idle';
+  t.end = 0;
+  t.remaining = 0;
+  t.notified = false;
+ } else if (t.status === 'running') {
+  t.remaining = Math.max(0, t.end - now);
+  t.status = 'paused';
+ } else if (t.status === 'paused') {
+  t.end = now + t.remaining;
+  t.status = 'running';
+ } else {
+  const v = timerValue(now);
+  if (v.error) { showError('timer-error', v.error); return; }
+  state.timer = {status:'running', mode:state.mode, end:v.end || now + v.ms, total:v.ms, remaining:v.ms, notified:false};
+  showError('timer-error','');
+ }
+ save();
+ renderControls();
+ tick();
+};
+
+$('timer-reset').onclick = () => {
+ const resetBtn = $('timer-reset');
+ resetBtn.classList.remove('spin-once');
+ void resetBtn.offsetWidth; // trigger reflow
+ resetBtn.classList.add('spin-once');
+ setTimeout(() => resetBtn.classList.remove('spin-once'), 400);
+
+ state.timer = {status:'idle', mode:state.mode, end:0, total:0, remaining:0, notified:false};
+ showError('timer-error','');
+ save();
+ renderControls();
+ tick();
+};
+
+$('reminder-toggle').onclick = () => {
+ const r = state.reminder;
+ unlockAudio();
+ if (r.running) {
+  r.running = false;
+  r.next = 0;
+ } else {
+  const v = intervalValue();
+  if (v.error) { showError('reminder-error', v.error); return; }
+  r.interval = v.ms;
+  r.next = Date.now() + v.ms;
+  r.running = true;
+  showError('reminder-error','');
+ }
+ save();
+ renderControls();
+ tick();
+};
+
+function updatePinButtons() {
+ const pinOutline = '<svg class="pin-icon" fill="none" stroke="currentColor" stroke-width="1.6" viewBox="0 0 24 24"><path d="M9 3h6m-3 8v10M8 5l1 6h6l1-6H8z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+ const pinSolid = '<svg class="pin-icon" fill="currentColor" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24"><path d="M9 3h6m-3 8v10M8 5l1 6h6l1-6H8z" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+ for (const id of ids) {
+  const card = cards[id];
+  const pinBtn = card.querySelector('.pin-btn');
+  const isPinned = state.pinnedCard === id;
+  pinBtn.classList.toggle('pinned', isPinned);
+  pinBtn.innerHTML = isPinned ? pinSolid : pinOutline;
+  pinBtn.title = isPinned ? '取消专注（还原全卡片）' : '专注单卡片（固定最大化）';
+  pinBtn.setAttribute('aria-label', (isPinned ? '取消专注 ' : '专注 ') + card.querySelector('h2').textContent);
+ }
+}
+
+function setPinned(id) {
+ if (state.pinnedCard === id) {
+  state.pinnedCard = null;
+ } else {
+  state.pinnedCard = id;
+ }
+ save();
+ applyLayout();
+}
+
+function applyLayout() {
+ const isFocus = Boolean(state.pinnedCard && ids.includes(state.pinnedCard));
+
+ for (const id of ids) {
+  const card = cards[id], l = state.layout[id];
+  if (isFocus) {
+   if (id === state.pinnedCard) {
+    card.hidden = false;
+    card.style.display = '';
+    card.style.setProperty('--span', '12');
+    card.style.setProperty('--height', l.height ? `${l.height}px` : 'auto');
+   } else {
+    card.hidden = true;
+    card.style.display = 'none';
+   }
+  } else {
+   card.hidden = false;
+   card.style.display = '';
+   card.style.setProperty('--span', l.span);
+   card.style.setProperty('--height', l.height ? `${l.height}px` : 'auto');
+  }
+
+  card.classList.toggle('collapsed', l.collapsed);
+  const fold = card.querySelector('.fold'), title = card.querySelector('h2').textContent;
+  fold.textContent = l.collapsed ? '+' : '−';
+  fold.setAttribute('aria-expanded', String(!l.collapsed));
+  fold.setAttribute('aria-label', (l.collapsed ? '展开' : '收起') + title);
+  fold.title = l.collapsed ? '展开' : '收起';
+  card.querySelector('.move-up').disabled = isFocus || state.order.indexOf(id) === 0;
+  card.querySelector('.move-down').disabled = isFocus || state.order.indexOf(id) === 2;
+ }
+
+ if (!isFocus) {
+  state.order.forEach((id, index) => {
+   const board = $('board');
+   if (board.children[index] !== cards[id]) board.insertBefore(cards[id], board.children[index] || null);
+  });
+ }
+ updatePinButtons();
+}
+
+function tick() {
+ const now = Date.now(), d = new Date(now), t = state.timer, r = state.reminder;
+ const showSec = state.showSeconds;
+ const tStr = timeText(d, showSec);
+ $('clock-time').textContent = tStr;
+ $('clock-mini').textContent = tStr;
+ $('clock-date').textContent = `${localDate(d)} ${weekDays[d.getDay()]}`;
+
+ if (t.status === 'running' && t.end <= now) {
+  t.status = 'overtime';
+  if (!t.notified) {
+   t.notified = true;
+   notify('倒计时已到，延时计时中');
+  }
+  save();
+  renderControls();
+ }
+
+ if (r.running && r.next <= now) {
+  r.last = now;
+  r.next += (Math.floor((now - r.next)/r.interval) + 1) * r.interval;
+  save();
+  notify(`间隔提醒 · 当前时间 ${timeText(d, true)}`);
+ }
+
+ let remainingText = '00:00:00', status = '待开始', end = '—', ratio = 100, isOvertime = false;
+
+ if (t.status === 'overtime') {
+  isOvertime = true;
+  const overtimeMs = now - t.end;
+  remainingText = `+${fmt(overtimeMs)}`;
+  status = '超时计时';
+  end = endText(t.end);
+  ratio = 100;
+ } else if (t.status === 'running') {
+  const rem = Math.max(0, t.end - now);
+  remainingText = fmt(rem);
+  status = '进行中';
+  end = endText(t.end);
+  ratio = t.total ? (rem / t.total) * 100 : 0;
+ } else if (t.status === 'paused') {
+  remainingText = fmt(t.remaining);
+  status = '已暂停';
+  end = endText(now + t.remaining);
+  ratio = t.total ? (t.remaining / t.total) * 100 : 0;
+ } else {
+  const v = timerValue(now);
+  const rem = v.ms || 0;
+  remainingText = fmt(rem);
+  if (state.mode === 'deadline') {
+   if (v.error) { showError('timer-error', v.error); }
+   else { showError('timer-error', ''); end = endText(v.end); }
+  } else if (v.ms) {
+   end = endText(now + v.ms);
+  }
+ }
+
+ const timerCard = cards['timer'];
+ timerCard.classList.toggle('is-overtime', isOvertime);
+
+ $('timer-readout').textContent = remainingText;
+ $('timer-mini').textContent = remainingText;
+ $('timer-status').textContent = status;
+ $('timer-mini-status').textContent = status;
+
+ /* Exact control: Only duration mode shows the end time line. Deadline mode completely hides it */
+ const endLineWrap = $('timer-end-wrap');
+ const currentMode = (t.status === 'running' || t.status === 'paused' || t.status === 'overtime') ? t.mode : state.mode;
+ if (currentMode === 'duration') {
+  endLineWrap.hidden = false;
+  endLineWrap.style.display = 'flex';
+  $('timer-end').textContent = end;
+ } else {
+  endLineWrap.hidden = true;
+  endLineWrap.style.display = 'none';
+ }
+
+ ratio = Math.max(0, Math.min(100, ratio));
+ $('progress-fill').style.width = `${ratio}%`;
+ $('timer-progress').setAttribute('aria-valuenow', String(Math.round(ratio)));
+
+ /* Interval Reminder Progress Calculation & Bar */
+ const rv = intervalValue(), remInterval = r.running ? Math.max(0, r.next - now) : (rv.ms || 0);
+ $('reminder-readout').textContent = fmt(remInterval);
+ $('reminder-mini').textContent = fmt(remInterval);
+ $('reminder-status').textContent = r.running ? '运行中' : '未启动';
+ $('reminder-mini-status').textContent = r.running ? '运行中' : '未启动';
+ $('last-reminder').textContent = r.last ? endText(r.last) : '—';
+
+ const reminderFill = $('reminder-bar-fill');
+ if (r.running && r.interval > 0) {
+  const elapsed = r.interval - remInterval;
+  const remRatio = Math.max(0, Math.min(100, (elapsed / r.interval) * 100));
+  reminderFill.style.width = `${remRatio}%`;
+ } else {
+  reminderFill.style.width = '0%';
+ }
+
+ if (t.status === 'overtime') document.title = `${remainingText} · 超时计时`;
+ else if (t.status === 'running') document.title = `${remainingText} · 倒计时`;
+ else if (r.running) document.title = `${fmt(remInterval)} · 提醒`;
+ else document.title = '计时器';
+}
+
+function move(id, delta) {
+ if (state.pinnedCard) return;
+ const i = state.order.indexOf(id), j = i + delta;
+ if (j < 0 || j >= 3) return;
+ [state.order[i], state.order[j]] = [state.order[j], state.order[i]];
+ applyLayout();
+ save();
+}
+
+for (const id of ids) {
+ const card = cards[id];
+ card.querySelector('.pin-btn').onclick = () => setPinned(id);
+ card.querySelector('.fold').onclick = () => {
+  state.layout[id].collapsed = !state.layout[id].collapsed;
+  applyLayout();
+  save();
+ };
+ card.querySelector('.move-up').onclick = () => {
+  move(id, -1);
+  card.querySelector('.move-up').disabled ? card.querySelector('.move-down').focus() : card.querySelector('.move-up').focus();
+ };
+ card.querySelector('.move-down').onclick = () => {
+  move(id, 1);
+  card.querySelector('.move-down').disabled ? card.querySelector('.move-up').focus() : card.querySelector('.move-down').focus();
+ };
+
+ const grip = card.querySelector('.grip');
+ grip.addEventListener('pointerdown', event => {
+  if (state.pinnedCard || event.button !== 0 || window.innerWidth <= 1100) return;
+  event.preventDefault();
+  grip.setPointerCapture(event.pointerId);
+  card.classList.add('dragging');
+  document.body.classList.add('interacting');
+  let target = null;
+  const track = e => {
+   const hit = document.elementFromPoint(e.clientX, e.clientY)?.closest('.card');
+   for (const c of Object.values(cards)) c.classList.remove('drop-target');
+   target = hit && hit !== card ? hit : null;
+   if (target) target.classList.add('drop-target');
+  };
+  const finish = e => {
+   if (e.type === 'pointerup' && target) {
+    const from = state.order.indexOf(id), to = state.order.indexOf(target.dataset.card);
+    state.order.splice(from, 1);
+    state.order.splice(to, 0, id);
+    applyLayout();
+    save();
+   }
+   card.classList.remove('dragging');
+   for (const c of Object.values(cards)) c.classList.remove('drop-target');
+   document.body.classList.remove('interacting');
+   grip.removeEventListener('pointermove', track);
+   grip.removeEventListener('pointerup', finish);
+   grip.removeEventListener('pointercancel', finish);
+  };
+  grip.addEventListener('pointermove', track);
+  grip.addEventListener('pointerup', finish);
+  grip.addEventListener('pointercancel', finish);
+ });
+
+ const handle = card.querySelector('.resize'), minSpan = id === 'timer' ? 4 : 3;
+ handle.addEventListener('keydown', e => {
+  if (state.pinnedCard) return;
+  if (!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)) return;
+  e.preventDefault();
+  const l = state.layout[id];
+  if (e.key === 'ArrowLeft') l.span = Math.max(minSpan, l.span - 1);
+  if (e.key === 'ArrowRight') l.span = Math.min(12, l.span + 1);
+  if (e.key === 'ArrowDown') l.height = Math.min(1200, (l.height || card.offsetHeight) + 20);
+  if (e.key === 'ArrowUp') l.height = Math.max(0, (l.height || card.offsetHeight) - 20);
+  applyLayout();
+  save();
+ });
+ handle.addEventListener('pointerdown', event => {
+  if (state.pinnedCard || event.button !== 0 || window.innerWidth <= 1100) return;
+  event.preventDefault();
+  handle.setPointerCapture(event.pointerId);
+  const l = state.layout[id], start = {x:event.clientX, y:event.clientY, span:l.span, height:card.offsetHeight}, unit = ($('board').getBoundingClientRect().width + 14)/12;
+  card.classList.add('resizing');
+  document.body.classList.add('interacting');
+  const track = e => {
+   l.span = Math.max(minSpan, Math.min(12, start.span + Math.round((e.clientX - start.x)/unit)));
+   l.height = Math.max(0, Math.min(1200, Math.round((start.height + e.clientY - start.y)/20)*20));
+   applyLayout();
+  };
+  const finish = () => {
+   card.classList.remove('resizing');
+   document.body.classList.remove('interacting');
+   handle.removeEventListener('pointermove', track);
+   handle.removeEventListener('pointerup', finish);
+   handle.removeEventListener('pointercancel', finish);
+   save();
+  };
+  handle.addEventListener('pointermove', track);
+  handle.addEventListener('pointerup', finish);
+  handle.addEventListener('pointercancel', finish);
+ });
+}
+
+$('restore-layout').onclick = () => {
+ state.pinnedCard = null;
+ state.layout = structuredClone(defaults);
+ state.order = ['timer','reminder','clock'];
+ applyLayout();
+ save();
+ toast('已恢复默认布局');
+};
+
+const media = matchMedia('(max-width:1100px)');
+function layoutHint() {
+ $('layout-hint').textContent = media.matches ? '↑ ↓ 调整顺序 · 顶部图钉专注模式' : '大头针专注 · 拖动左上角换位 · 右下角调整大小';
+}
+media.addEventListener('change', layoutHint);
+layoutHint();
+
+renderSound();
+renderSecondsToggle();
+renderDlSecondsUI();
+renderControls();
+applyLayout();
+save();
+tick();
+setInterval(tick, 250);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+window.addEventListener('pageshow', tick);
+})();
+</script>
+</body></html>
