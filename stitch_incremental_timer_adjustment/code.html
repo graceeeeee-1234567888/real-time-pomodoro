@@ -1,0 +1,1200 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="light" name="color-scheme"/>
+<title>+00:05 · 继续计时</title>
+<style>
+:root{
+  --bg:#f8f9f6;
+  --ink:#23392e;
+  --muted:#69766d;
+  --line:#dce2da;
+  --accent:#315a43;
+  --accent-light:#4a7a5f;
+  --soft:#e8eee6;
+  --soft-hover:#deebe0;
+  --error:#a53d32;
+  --wave-primary:#b4d0ad;
+  --wave-secondary:#c6dfbf;
+  --picker-item-h:36px;
+  /* 统一超时与已过去的清爽蓝色系 */
+  --blue-text:#1d4ed8;
+  --blue-accent:#2563eb;
+  --blue-soft-bg:#eff6ff;
+  --blue-line:#bfdbfe;
+  --blue-fill:#dbeafe;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI","Microsoft YaHei",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation}
+button:disabled{cursor:default;opacity:.45}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+button{display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:44px;border:1px solid transparent;background:transparent;border-radius:10px;padding:10px 16px;transition:background .15s,color .15s,transform .1s}
+button:hover:not(:disabled){background:var(--soft)}
+button svg{width:18px;height:18px;flex-shrink:0}
+input,select{min-width:0;min-height:40px;border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 10px}
+input:disabled,select:disabled{color:var(--muted)}
+input[aria-invalid=true]{border-color:var(--error)}
+input[type=number]{appearance:textfield;-moz-appearance:textfield;font-variant-numeric:tabular-nums}
+input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+[hidden]{display:none!important}
+h1,p{margin:0}
+.shell{width:min(100% - 48px,780px);margin:auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:36px 0 24px;border-bottom:1px solid var(--line)}
+h1{font-size:18px;font-weight:600;letter-spacing:.06em}
+.date{margin-top:4px;font-size:12px;color:var(--muted)}
+.header-right{display:flex;align-items:center;gap:18px}
+.clock{padding:0 4px;font-size:40px;font-weight:700;line-height:1.2;letter-spacing:-.025em;font-variant-numeric:tabular-nums;min-width:176px;border:none;background:none}
+.sound-tools{display:flex;align-items:center;gap:0}
+.icon-button{width:40px;height:40px;padding:8px;color:var(--muted);border-radius:8px}
+.icon-button[aria-pressed=true]{color:var(--accent)}
+.sound-test{font-size:12px;color:var(--muted);padding:6px 10px;min-width:40px}
+
+.timer{padding:40px 0 36px;text-align:center}
+.tabs{display:inline-flex;padding:3px;background:var(--soft);border-radius:12px;gap:4px}
+.tabs button{min-width:84px;min-height:34px;padding:5px 20px;border-radius:8px;color:var(--muted);font-weight:500;font-size:13px;border:none}
+.tabs button[aria-pressed=true]{background:var(--bg);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+
+/* 主读数显示卡片与波浪进度槽 */
+.readout{position:relative;isolation:isolate;max-width:560px;min-height:210px;margin:28px auto 24px;padding:34px 16px;display:flex;flex-direction:column;justify-content:center;user-select:none}
+.readout .timer-time-wrap,.readout .timer-status{position:relative;z-index:2}
+.timer-time-wrap{display:inline-flex;align-items:baseline;justify-content:center;margin:0 auto;cursor:pointer;flex-wrap:nowrap}
+.timer-time{font-size:clamp(56px,12.5vw,112px);line-height:1.08;font-weight:700;letter-spacing:-.055em;font-variant-numeric:tabular-nums;white-space:nowrap;transition:color .25s ease}
+.timer-time.long{font-size:clamp(34px,8vw,70px);letter-spacing:-.03em}
+
+/* 定点已过去与超时统一用干净深邃的蓝色系 */
+.timer-time.past-mode,
+.timer-time.overtime-mode{
+  color:var(--blue-text);
+}
+
+/* 跨度单位优雅展示：数字大粗体，单位微缩附着并具有自然呼吸感 */
+.timer-time .num{font-variant-numeric:tabular-nums;font-weight:700}
+.timer-time .unit{
+  font-size:0.36em;
+  font-weight:600;
+  color:var(--muted);
+  margin-left:3px;
+  margin-right:12px;
+  vertical-align:baseline;
+  letter-spacing:0.02em;
+}
+.timer-time.past-mode .unit,
+.timer-time.overtime-mode .unit{
+  color:#60a5fa;
+}
+.timer-time .unit:last-child{margin-right:0}
+.timer-time .prefix-plus{font-size:0.75em;margin-right:4px;vertical-align:baseline;font-weight:700}
+
+.timer-status{color:var(--muted);font-size:12px;min-height:18px;margin-top:10px;font-weight:500;letter-spacing:.02em;transition:opacity .2s,color .25s}
+.timer-status:empty{display:none}
+
+/* 进度条与流淌波浪前锋动效 */
+.progress{position:absolute;inset:0;z-index:0;border:1px solid var(--line);background:#f1f4ee;overflow:hidden;border-radius:6px;transition:background .3s,border-color .3s}
+.progress-fill{position:relative;width:100%;height:100%;background:linear-gradient(90deg,#cadbc4 0%,#dbe7d7 100%);transition:width .24s cubic-bezier(0.2,0,0.2,1),background-color .3s}
+.wave-front{position:absolute;top:0;right:-18px;width:36px;height:100%;pointer-events:none;overflow:hidden;opacity:.92;transition:opacity .3s}
+.wave-layer{position:absolute;top:-100%;left:0;width:100%;height:300%;background-repeat:repeat-y;background-size:20px 40px}
+.wave-1{
+  width:24px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40' preserveAspectRatio='none'%3E%3Cpath d='M0,0 Q12,10 0,20 Q12,30 0,40 L20,40 L20,0 Z' fill='%23bdd6b7' opacity='0.75'/%3E%3C/svg%3E");
+  animation:wave-drift-vertical 2.4s linear infinite;
+}
+.wave-2{
+  left:6px;
+  width:20px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40' preserveAspectRatio='none'%3E%3Cpath d='M0,0 Q14,10 0,20 Q14,30 0,40 L20,40 L20,0 Z' fill='%23a7c6a0' opacity='0.55'/%3E%3C/svg%3E");
+  animation:wave-drift-vertical 3.6s cubic-bezier(0.4,0,0.6,1) infinite reverse;
+}
+
+@keyframes wave-drift-vertical{
+  from{transform:translateY(0)}
+  to{transform:translateY(40px)}
+}
+
+/* 状态配色切换 */
+.timer.is-running .progress{background:#ecf2e9;border-color:#c8d7c4}
+.timer.is-running .progress-fill{background:linear-gradient(90deg,#b5cfb0,#c8e0c3);box-shadow:inset 0 0 20px rgba(49,90,67,.06)}
+.timer.is-running .wave-front{opacity:1}
+.timer.is-running .wave-1{animation-play-state:running}
+.timer.is-running .wave-2{animation-play-state:running}
+
+.timer.is-paused .progress{background:#f3f5f1;border-color:#dee2db}
+.timer.is-paused .progress-fill{background:#d8e2d4}
+.timer.is-paused .wave-1,.timer.is-paused .wave-2{animation-play-state:paused;opacity:.6}
+
+/* 定点已过去与超时状态：统一柔和蓝背景与细边框 */
+.timer.is-past .progress,
+.timer.is-overtime .progress{
+  background:var(--blue-soft-bg);
+  border-color:var(--blue-line);
+}
+.timer.is-past .progress-fill,
+.timer.is-overtime .progress-fill{
+  background:var(--blue-fill);
+}
+.timer.is-past .wave-front,
+.timer.is-overtime .wave-front{
+  display:none;
+}
+.timer.is-past .end-time,
+.timer.is-overtime .end-time,
+.timer.is-past .timer-status,
+.timer.is-overtime .timer-status{
+  color:var(--blue-accent);
+}
+
+.settings{max-width:440px;margin:auto}
+
+/* 时长输入 */
+.duration-grid{display:flex;flex-direction:column;gap:8px}
+.duration-fields{display:flex;justify-content:center;gap:10px}
+.segment{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;padding-right:10px;min-width:0;flex:1;background:rgba(255,255,255,.4)}
+.segment:focus-within{outline:2px solid var(--accent);outline-offset:2px;background:#fff}
+.segment:has(input[aria-invalid=true]){border-color:var(--error)}
+.segment input{width:100%;text-align:center;font-size:17px;border:0;outline:none;min-height:38px;padding:4px 4px 4px 10px;background:transparent}
+.segment input:focus-visible{outline:none}
+.segment span{font-size:11px;color:var(--muted);font-weight:500}
+
+.duration-subrow{display:flex;gap:10px}
+.subrow-slot{flex:1;min-width:0}
+.presets{display:flex;justify-content:center;align-items:center;gap:5px;width:100%}
+.presets button{min-height:24px;height:24px;padding:0 8px;font-size:11px;font-weight:600;color:var(--muted);border-radius:12px;border:1px solid var(--line);background:var(--bg);box-shadow:0 1px 2px rgba(0,0,0,.02);transition:all .15s;line-height:1}
+.presets button:hover:not(:disabled){background:var(--soft);color:var(--accent);border-color:var(--accent);transform:translateY(-0.5px)}
+.presets button:active:not(:disabled){transform:scale(0.94)}
+
+/* iOS 原生拟物滚轮选择器 (Picker Drum / Wheel) */
+.ios-picker-wrapper{
+  position:relative;
+  background:#f4f6f2;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:6px 10px;
+  margin:0 auto;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.03), 0 1px 2px rgba(0,0,0,.02);
+}
+.ios-picker-columns{
+  position:relative;
+  display:flex;
+  height:144px; /* 4 * 36px */
+  overflow:hidden;
+  user-select:none;
+}
+/* 选中高亮透镜条条 (Lens Highlight) */
+.ios-picker-highlight{
+  position:absolute;
+  top:54px; /* 1.5 * 36px = 54px */
+  left:4px;
+  right:4px;
+  height:var(--picker-item-h);
+  background:rgba(255,255,255,.94);
+  border:1px solid rgba(49,90,67,.18);
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(35,57,46,.06), inset 0 0 0 1px rgba(255,255,255,.6);
+  pointer-events:none;
+  z-index:2;
+}
+/* 上下半透明拟物渐隐阴影罩 */
+.ios-picker-mask-top, .ios-picker-mask-bottom{
+  position:absolute;
+  left:0;right:0;
+  height:54px;
+  pointer-events:none;
+  z-index:3;
+}
+.ios-picker-mask-top{
+  top:0;
+  background:linear-gradient(180deg, #f4f6f2 15%, rgba(244,246,242,.75) 60%, rgba(244,246,242,0) 100%);
+  border-bottom:1px solid rgba(220,226,218,.4);
+}
+.ios-picker-mask-bottom{
+  bottom:0;
+  background:linear-gradient(0deg, #f4f6f2 15%, rgba(244,246,242,.75) 60%, rgba(244,246,242,0) 100%);
+  border-top:1px solid rgba(220,226,218,.4);
+}
+
+.picker-col{
+  flex:1;
+  position:relative;
+  height:100%;
+  overflow-y:auto;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  scroll-behavior:smooth;
+  cursor:grab;
+}
+.picker-col::-webkit-scrollbar{display:none}
+.picker-col.is-dragging{cursor:grabbing;scroll-behavior:auto}
+.picker-col-date{flex:2.1}
+.picker-col-colon{
+  flex:0 0 14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  font-weight:700;
+  color:var(--muted);
+  z-index:4;
+  margin-top:-2px;
+}
+.picker-content{
+  padding:54px 0;
+}
+.picker-item{
+  height:var(--picker-item-h);
+  line-height:var(--picker-item-h);
+  text-align:center;
+  font-size:15px;
+  font-weight:500;
+  color:#7e8b82;
+  transition:color .12s, transform .12s, opacity .12s;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  padding:0 4px;
+}
+.picker-item.is-selected{
+  color:var(--ink);
+  font-weight:700;
+  font-size:17px;
+  transform:scale(1.04);
+}
+
+/* 日期条目视觉严格对齐结构 */
+.date-line-item{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  font-variant-numeric:tabular-nums;
+}
+.date-box-month, .date-box-day{
+  display:inline-block;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.date-box-month{
+  width:1.55ch; /* 容纳1-2位数字，右对齐且不补0 */
+}
+.date-box-day{
+  width:1.55ch; /* 容纳1-2位数字，右对齐且不补0 */
+}
+.date-unit-label{
+  display:inline-block;
+  margin:0 4px 0 1px;
+}
+.date-tag{
+  display:inline-block;
+  margin-left:8px;
+  font-size:12px;
+  color:#94a3b8; /* 浅色辅助字样 */
+  font-weight:normal;
+  width:32px;
+  text-align:left;
+  letter-spacing:0;
+}
+.picker-item.is-selected .date-tag{
+  color:#64748b;
+  font-weight:500;
+}
+
+.error{color:var(--error);font-size:12px;text-align:center;margin-top:10px}
+.error:empty{display:none}
+.actions{display:flex;justify-content:center;gap:12px;margin-top:22px}
+.actions button{width:54px;min-width:54px;height:54px;min-height:54px;border-radius:50%;padding:0;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+.actions button svg{width:22px;height:22px}
+.primary{background:var(--accent);color:#fff}
+.primary:hover:not(:disabled){background:#264836;color:#fff;transform:scale(1.02)}
+.secondary{border-color:var(--line);background:var(--bg);color:var(--muted)}
+.secondary:hover:not(:disabled){background:var(--soft);color:var(--ink)}
+.end-time{font-weight:600;margin-top:14px;color:var(--muted);font-size:12px;min-height:18px;font-variant-numeric:tabular-nums}
+.reminder{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:22px 0}
+.reminder-row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.reminder-fields{display:flex;align-items:center;gap:8px}
+.reminder-fields label,.reminder-fields .suffix{color:var(--muted);white-space:nowrap}
+.reminder-fields input{width:58px;text-align:center;padding:6px 4px}
+.reminder-fields select{width:76px;padding:6px 4px}
+.reminder-controls{display:flex;gap:12px;align-items:center;margin-left:auto}
+.reminder-countdown{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.reminder-toggle{border:1px solid var(--line);font-size:13px;white-space:nowrap;padding:8px 16px}
+.reminder-toggle[aria-pressed=true]{background:var(--soft);border-color:var(--soft);color:var(--accent)}
+footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
+.toasts{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);z-index:20;pointer-events:none;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--ink);color:white;border-radius:10px;padding:10px 18px;font-size:13px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+
+@media(max-width:560px){
+ .shell{width:calc(100% - 32px)}
+ .top{padding:24px 0 18px;gap:8px}
+ h1{font-size:16px}
+ .clock{font-size:32px;min-width:140px}
+ .sound-test{display:none}
+ .timer{padding:30px 0 26px}
+ .readout{min-height:175px;margin:22px auto 20px;padding:26px 10px}
+ .timer-time{font-size:clamp(54px,16vw,92px)}
+ .timer-time.long{font-size:clamp(28px,8.5vw,54px)}
+ .settings{max-width:360px}
+ .duration-fields,.duration-subrow{gap:8px}
+ .presets button{min-height:22px;height:22px;padding:0 6px;font-size:10px}
+ .reminder-row{gap:12px}
+ .reminder-controls{gap:8px}
+ .reminder-toggle{padding:7px 12px}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="top">
+<div><h1 class="">计时器</h1><p class="date" id="clock-date">10月26日 · 星期一</p></div>
+<div class="header-right">
+<button aria-label="当前时间，点击切换秒数" class="clock" id="clock" title="点击切换秒数显示">09:25</button>
+<div class="sound-tools">
+<button aria-label="关闭声音" aria-pressed="true" class="icon-button" id="sound" title="关闭声音"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewbox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"></path><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"></path></svg></button>
+<button class="sound-test" id="test-sound" title="试听提示音">试听</button>
+</div>
+</div>
+</header>
+<main>
+<section aria-label="倒计时" class="timer">
+<div aria-label="计时方式" class="tabs" role="group">
+<button aria-pressed="true" class="" id="mode-duration">时长</button>
+<button aria-pressed="false" class="" id="mode-deadline">定点</button>
+</div>
+<div class="readout">
+<div aria-label="剩余时间比例" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0" class="progress" id="timer-progress" role="progressbar">
+<div class="progress-fill" id="progress-fill" style="width: 0%;">
+<div class="wave-front" id="wave-front" style="display: none;">
+<div class="wave-layer wave-1"></div>
+<div class="wave-layer wave-2"></div>
+</div>
+</div>
+</div>
+<div class="timer-time-wrap" id="timer-time-wrap" title="点击切换秒数显示与跨度单位">
+<div aria-label="剩余时间" aria-live="off" class="timer-time" id="timer-readout" role="timer">00:00</div>
+</div>
+</div>
+<div class="settings">
+<!-- 时长面板 -->
+<div id="duration-panel">
+<div class="duration-grid">
+<div class="duration-fields">
+<div class="segment"><input aria-describedby="timer-error" aria-invalid="false" aria-label="时长：小时" id="hours" inputmode="numeric" max="999" min="0" placeholder="0" step="1" type="number" value="0"/><span aria-hidden="true" class="">时</span></div>
+<div class="segment"><input aria-describedby="timer-error" aria-invalid="false" aria-label="时长：分钟" id="minutes" inputmode="numeric" max="59" min="0" placeholder="0" step="1" type="number" value="25"/><span aria-hidden="true" class="">分</span></div>
+<div class="segment"><input aria-describedby="timer-error" aria-invalid="false" aria-label="时长：秒" id="seconds" inputmode="numeric" max="59" min="0" placeholder="0" step="1" type="number" value="0"/><span aria-hidden="true" class="">秒</span></div>
+</div>
+<div aria-hidden="true" class="duration-subrow">
+<div class="subrow-slot"></div>
+<div class="subrow-slot">
+<div aria-label="增加时长" class="presets" role="group">
+<button class="" data-add-minutes="5" id="btn-add-5" title="增加 5 分钟">+5</button>
+<button class="" data-add-minutes="10" id="btn-add-10" title="增加 10 分钟">+10</button>
+<button class="" data-add-minutes="20" id="btn-add-20" title="增加 20 分钟">+20</button>
+</div>
+</div>
+<div class="subrow-slot"></div>
+</div>
+</div>
+</div>
+<!-- 定点面板：iOS 原生拟物滚轮选择器 -->
+<div hidden="" id="deadline-panel">
+<div class="ios-picker-wrapper">
+<div class="ios-picker-highlight"></div>
+<div class="ios-picker-mask-top"></div>
+<div class="ios-picker-mask-bottom"></div>
+<div class="ios-picker-columns" id="picker-columns" style="pointer-events: auto; opacity: 1;">
+<!-- 日期滚轮 -->
+<div class="picker-col picker-col-date" data-wheel="date" id="picker-col-date">
+<div class="picker-content" id="picker-content-date"></div>
+</div>
+<!-- 小时滚轮 -->
+<div class="picker-col" data-wheel="hour" id="picker-col-hour">
+<div class="picker-content" id="picker-content-hour"></div>
+</div>
+<div class="picker-col-colon">:</div>
+<!-- 分钟滚轮 -->
+<div class="picker-col" data-wheel="minute" id="picker-col-minute">
+<div class="picker-content" id="picker-content-minute"></div>
+</div>
+</div>
+</div>
+</div>
+<p class="error" id="timer-error" role="alert"></p>
+</div>
+<div class="actions">
+<button aria-label="开始" class="primary" id="timer-start" title="开始"><svg aria-hidden="true" fill="currentColor" viewbox="0 0 24 24"><path d="m8 5 11 7-11 7z"></path></svg></button>
+<button aria-label="重置" class="secondary" id="timer-reset" title="重置"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.5 7M3 4v7h7"></path></svg></button>
+</div>
+<p class="end-time" id="timer-end">继续计时</p>
+</section>
+<section aria-label="间隔提醒" class="reminder">
+<div class="reminder-row">
+<div class="reminder-fields">
+<label class="" for="interval-value">每</label>
+<input aria-describedby="reminder-error" aria-label="提醒间隔" id="interval-value" inputmode="numeric" max="999" min="1" step="1" type="number" value="5"/>
+<select aria-label="提醒间隔单位" id="interval-unit"><option value="1000">秒</option><option selected="" value="60000">分钟</option><option value="3600000">小时</option></select>
+<span class="suffix">提醒</span>
+</div>
+<div class="reminder-controls">
+<span aria-label="距下次提醒" aria-live="off" class="reminder-countdown" hidden="" id="reminder-readout" role="timer"></span>
+<button aria-pressed="false" class="reminder-toggle" id="reminder-toggle">启动提醒</button>
+</div>
+</div>
+<p class="error" id="reminder-error" role="alert"></p>
+</section>
+</main>
+<footer id="page-note">当前浏览器无法保存；刷新会丢失计时。</footer>
+</div>
+<div aria-atomic="false" aria-live="polite" class="toasts" id="toasts" role="status"></div>
+<script>
+'use strict';
+(() => {
+const $ = id => document.getElementById(id);
+const KEY = 'adhd-timer-v3';
+const ITEM_H = 36;
+const pad = n => String(n).padStart(2, '0');
+const dateValue = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const clockText = (d, seconds=true) => `${pad(d.getHours())}:${pad(d.getMinutes())}${seconds ? ':'+pad(d.getSeconds()) : ''}`;
+
+const formatDigital = (ms, roundUp=true) => {
+ const sec = Math.max(0, (roundUp ? Math.ceil : Math.floor)(ms / 1000));
+ const days = Math.floor(sec / 86400);
+ const hours = Math.floor((sec % 86400) / 3600);
+ const mins = Math.floor((sec % 3600) / 60);
+ const secs = sec % 60;
+ if (days > 0) {
+   return `${days}天 ${pad(hours)}:${pad(mins)}:${pad(secs)}`;
+ }
+ return `${hours ? pad(hours)+':' : ''}${pad(mins)}:${pad(secs)}`;
+};
+
+const endText = ms => {
+ const d = new Date(ms), today = new Date();
+ const prefix = dateValue(d) === dateValue(today) ? '' : `${d.getFullYear() === today.getFullYear() ? '' : d.getFullYear()+'年'}${d.getMonth()+1}月${d.getDate()}日 `;
+ return prefix + clockText(d, false);
+};
+
+// 预备下一小时的目标默认时间
+const nextHour = new Date(Date.now() + 3600000);
+nextHour.setMinutes(0, 0, 0);
+
+const idleTimer = mode => ({status:'idle',mode,end:0,total:0,remaining:0,notified:false,isPast:false});
+
+const state = {
+  sound: true,
+  showSeconds: true,
+  mode: 'duration',
+  deadlineCompactMode: true, // 定点模式下未展开秒数时采用跨度单位显示
+  settings: {
+    hours: '0', minutes: '25', seconds: '0',
+    date: dateValue(nextHour),
+    hour: pad(nextHour.getHours()),
+    minute: pad(nextHour.getMinutes()),
+    interval: '5', unit: '60000'
+  },
+  timer: idleTimer('duration'),
+  reminder: {running:false, interval:300000, next:0, last:0}
+};
+
+// 恢复本地存储
+try {
+  const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+  if (saved && typeof saved === 'object') {
+    if (typeof saved.sound === 'boolean') state.sound = saved.sound;
+    if (typeof saved.showSeconds === 'boolean') state.showSeconds = saved.showSeconds;
+    if (typeof saved.deadlineCompactMode === 'boolean') state.deadlineCompactMode = saved.deadlineCompactMode;
+    if (['duration','deadline'].includes(saved.mode)) state.mode = saved.mode;
+    if (saved.settings) Object.assign(state.settings, saved.settings);
+    if (saved.timer && ['running','paused','overtime','past'].includes(saved.timer.status)) {
+      state.timer = saved.timer;
+      state.mode = saved.timer.mode;
+    }
+  }
+} catch (e) {}
+
+let saveJob;
+function save() {
+  clearTimeout(saveJob);
+  try {
+    localStorage.setItem(KEY, JSON.stringify({version:5,...state}));
+    $('page-note').textContent = '提醒需保持页面打开。';
+  } catch(e) {
+    $('page-note').textContent = '当前浏览器无法保存；刷新会丢失计时。';
+  }
+}
+function queueSave() { clearTimeout(saveJob); saveJob = setTimeout(save, 200); }
+window.addEventListener('pagehide', save);
+
+function toast(message) {
+  const item = document.createElement('div');
+  item.className = 'toast';
+  item.textContent = message;
+  while ($('toasts').children.length >= 2) $('toasts').firstElementChild.remove();
+  $('toasts').append(item);
+  setTimeout(() => item.remove(), 3200);
+}
+
+/* 音频逻辑 */
+let audio;
+async function unlockAudio() {
+  if (!state.sound) return false;
+  try {
+    const Audio = window.AudioContext || window.webkitAudioContext;
+    if (!Audio) return false;
+    if (!audio || audio.state === 'closed') audio = new Audio();
+    if (audio.state !== 'running') await audio.resume();
+    return audio.state === 'running';
+  } catch(e) { return false; }
+}
+function chime() {
+  if (!state.sound || !audio || audio.state !== 'running') return false;
+  try {
+    const start = audio.currentTime;
+    [659.25, 784].forEach((hz, i) => {
+      const osc = audio.createOscillator(), gain = audio.createGain(), at = start + i * 0.22;
+      osc.type = 'sine'; osc.frequency.value = hz;
+      gain.gain.setValueAtTime(0, at);
+      gain.gain.linearRampToValueAtTime(.12, at + 0.025);
+      gain.gain.exponentialRampToValueAtTime(.001, at + 0.55);
+      osc.connect(gain); gain.connect(audio.destination);
+      osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+      osc.start(at); osc.stop(at + 0.6);
+    });
+    return true;
+  } catch(e) { return false; }
+}
+function notify(msg) {
+  const ok = chime();
+  toast(msg + (state.sound && !ok ? ' · 点击声音开启' : ''));
+}
+
+function renderSound() {
+  const speaker = '<path d="M11 5 6 9H3v6h3l5 4z"/>';
+  $('sound').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${speaker}${state.sound ? '<path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>' : '<path d="m16 9 6 6m0-6-6 6"/>'}</svg>`;
+  $('sound').setAttribute('aria-pressed', String(state.sound));
+  $('sound').title = state.sound ? '关闭声音' : '开启声音';
+}
+$('sound').onclick = async () => {
+  state.sound = !state.sound; renderSound(); save();
+  if (state.sound && !await unlockAudio()) toast('请点击试听重试。');
+};
+$('test-sound').onclick = async () => {
+  if (!state.sound) { toast('请先开启声音。'); return; }
+  if (!await unlockAudio() || !chime()) toast('浏览器无法播放。');
+};
+document.addEventListener('pointerdown', () => { void unlockAudio(); }, {once:true});
+document.addEventListener('keydown', () => { void unlockAudio(); }, {once:true});
+
+// 顶栏时钟秒数切换与状态同步
+$('clock').onclick = () => { 
+  state.showSeconds = !state.showSeconds; 
+  save(); 
+  tick(); 
+};
+
+/* 输入与解析 */
+function integer(id, min, max, emptyIsZero=false) {
+  const input = $(id); if (!input) return 0;
+  const raw = input.value.trim();
+  if (raw === '' && emptyIsZero) return 0;
+  return /^\d+$/.test(raw) && Number(raw) >= min && Number(raw) <= max ? Number(raw) : null;
+}
+
+function getDeadlineTargetDate() {
+  const [y, m, d] = state.settings.date.split('-').map(Number);
+  const h = parseInt(state.settings.hour, 10) || 0;
+  const min = parseInt(state.settings.minute, 10) || 0;
+  return new Date(y, m - 1, d, h, min, 0, 0);
+}
+
+function timerValue(now = Date.now()) {
+  if (state.mode === 'duration') {
+    const h = integer('hours',0,999,true), m = integer('minutes',0,59,true), s = integer('seconds',0,59,true);
+    if ([h,m,s].includes(null)) return {error:'请输入有效时长：时 0–999，分和秒 0–59。'};
+    const ms = (h*3600 + m*60 + s) * 1000;
+    return ms ? {ms, end: now + ms, isPast: false} : {error:'总时长至少为 1 秒。'};
+  }
+  // 定点模式
+  const target = getDeadlineTargetDate();
+  const end = target.getTime();
+  const diff = end - now;
+  if (diff < 0) {
+    return {ms: Math.abs(diff), end, isPast: true};
+  }
+  return {ms: diff, end, isPast: false};
+}
+
+function intervalValue() {
+  const value = integer('interval-value',1,999), unit = Number($('interval-unit').value);
+  return value !== null && [1000,60000,3600000].includes(unit) ? {ms:value*unit} : {error:'间隔请输入 1–999 整数。'};
+}
+
+function showError(type, msg='') {
+  $(type+'-error').textContent = msg;
+}
+
+/* -------------------------------------------------------------
+   iOS 拟物滚轮选择器核心逻辑 (Drum Picker)
+   日期项严格对齐：
+   - 不补0
+   - 月份与日期数字分别使用等宽容器对齐，使“月”与“日”汉字严格在垂直同一列
+   - 仅今天、明天有浅色注释，其余普通日期注释为空，不扰乱排齐
+------------------------------------------------------------- */
+const dateOptions = [];
+function buildDateOptions() {
+  dateOptions.length = 0;
+  const now = new Date();
+  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  for (let i = -7; i <= 30; i++) {
+    const d = new Date(base.getTime() + i * 86400000);
+    const val = dateValue(d);
+    const monthNum = d.getMonth() + 1;
+    const dayNum = d.getDate();
+    
+    let tag = '';
+    if (i === 0) tag = '今天';
+    else if (i === 1) tag = '明天';
+
+    // HTML 结构确保：“月”和“日”汉字完全在各自固定的垂直坐标线上
+    const html = `<div class="date-line-item"><span class="date-box-month">${monthNum}</span><span class="date-unit-label">月</span><span class="date-box-day">${dayNum}</span><span class="date-unit-label">日</span><span class="date-tag">${tag}</span></div>`;
+
+    dateOptions.push({value: val, html});
+  }
+}
+buildDateOptions();
+
+const hourOptions = Array.from({length: 24}, (_, i) => ({value: pad(i), label: `${pad(i)} 时`}));
+const minuteOptions = Array.from({length: 60}, (_, i) => ({value: pad(i), label: `${pad(i)} 分`}));
+
+function setupWheel(colId, contentId, options, getVal, onSelect) {
+  const col = $(colId);
+  const content = $(contentId);
+  content.innerHTML = '';
+  options.forEach((opt, idx) => {
+    const div = document.createElement('div');
+    div.className = 'picker-item';
+    div.dataset.index = idx;
+    div.dataset.value = opt.value;
+    if (opt.html) {
+      div.innerHTML = opt.html;
+    } else {
+      div.textContent = opt.label;
+    }
+    content.appendChild(div);
+  });
+
+  let scrollTimeout = null;
+  function updateHighlight() {
+    const scrollTop = col.scrollTop;
+    const selectedIdx = Math.max(0, Math.min(options.length - 1, Math.round(scrollTop / ITEM_H)));
+    const items = content.children;
+    for (let i = 0; i < items.length; i++) {
+      items[i].classList.toggle('is-selected', i === selectedIdx);
+    }
+    return selectedIdx;
+  }
+
+  function snapTo(index, smooth = true) {
+    const targetY = index * ITEM_H;
+    col.scrollTo({
+      top: targetY,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+    updateHighlight();
+  }
+
+  col.addEventListener('scroll', () => {
+    updateHighlight();
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      const idx = updateHighlight();
+      snapTo(idx, true);
+      const selectedVal = options[idx].value;
+      if (getVal() !== selectedVal) {
+        onSelect(selectedVal);
+      }
+    }, 120);
+  }, {passive: true});
+
+  content.addEventListener('click', e => {
+    const item = e.target.closest('.picker-item');
+    if (!item) return;
+    const idx = Number(item.dataset.index);
+    snapTo(idx, true);
+    onSelect(options[idx].value);
+  });
+
+  function syncValue() {
+    const curVal = getVal();
+    let idx = options.findIndex(o => o.value === curVal);
+    if (idx === -1) idx = 0;
+    snapTo(idx, false);
+  }
+
+  return {syncValue, snapTo};
+}
+
+let dateWheelCtrl, hourWheelCtrl, minWheelCtrl;
+function initPickers() {
+  dateWheelCtrl = setupWheel('picker-col-date', 'picker-content-date', dateOptions, 
+    () => state.settings.date, 
+    val => {
+      state.settings.date = val;
+      queueSave(); tick();
+    }
+  );
+
+  hourWheelCtrl = setupWheel('picker-col-hour', 'picker-content-hour', hourOptions, 
+    () => state.settings.hour, 
+    val => {
+      state.settings.hour = val;
+      queueSave(); tick();
+    }
+  );
+
+  minWheelCtrl = setupWheel('picker-col-minute', 'picker-content-minute', minuteOptions, 
+    () => state.settings.minute, 
+    val => {
+      state.settings.minute = val;
+      queueSave(); tick();
+    }
+  );
+}
+
+// 控件状态更新
+function renderControls() {
+  const t = state.timer, locked = t.status !== 'idle', isDeadline = state.mode === 'deadline';
+  $('duration-panel').hidden = isDeadline;
+  $('deadline-panel').hidden = !isDeadline;
+  
+  $('mode-duration').setAttribute('aria-pressed', String(state.mode === 'duration'));
+  $('mode-deadline').setAttribute('aria-pressed', String(state.mode === 'deadline'));
+  $('mode-duration').disabled = locked;
+  $('mode-deadline').disabled = locked;
+
+  // 滚轮选择器交互锁
+  $('picker-columns').style.pointerEvents = locked ? 'none' : 'auto';
+  $('picker-columns').style.opacity = locked ? '0.6' : '1';
+
+  // 时长三个 input 输入框在锁定期间禁用，但 +5/+10/+20 保持随时可点！
+  ['hours','minutes','seconds'].forEach(id => $(id).disabled = locked);
+
+  // 开始按钮文案与图标
+  let label = '开始';
+  let icon = '<path d="m8 5 11 7-11 7z"/>';
+  if (t.status === 'running') {
+    label = '暂停';
+    icon = '<path d="M7 5h4v14H7zm6 0h4v14h-4z"/>';
+  } else if (t.status === 'paused') {
+    label = '继续';
+    icon = '<path d="m8 5 11 7-11 7z"/>';
+  } else if (t.status === 'overtime' || t.status === 'past') {
+    label = '完成';
+    icon = '<path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+  }
+  $('timer-start').innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${icon}</svg>`;
+  $('timer-start').setAttribute('aria-label', label);
+  $('timer-start').title = label;
+
+  $('interval-value').disabled = state.reminder.running;
+  $('interval-unit').disabled = state.reminder.running;
+  $('reminder-toggle').textContent = state.reminder.running ? '停止提醒' : '启动提醒';
+  $('reminder-toggle').setAttribute('aria-pressed', String(state.reminder.running));
+  $('reminder-readout').hidden = !state.reminder.running;
+}
+
+/* 模式切换 */
+$('mode-duration').onclick = () => {
+  if (state.timer.status !== 'idle') return;
+  state.mode = 'duration';
+  state.timer = idleTimer('duration');
+  showError('timer'); renderControls(); save(); tick();
+};
+$('mode-deadline').onclick = () => {
+  if (state.timer.status !== 'idle') return;
+  state.mode = 'deadline';
+  state.timer = idleTimer('deadline');
+  showError('timer'); renderControls(); save(); tick();
+  setTimeout(() => {
+    dateWheelCtrl?.syncValue();
+    hourWheelCtrl?.syncValue();
+    minWheelCtrl?.syncValue();
+  }, 50);
+};
+
+/* -------------------------------------------------------------
+   时长倒计时随时快捷累加 (+5, +10, +20)
+------------------------------------------------------------- */
+function addMinutesToTimer(mins) {
+  const addMs = mins * 60000;
+  const t = state.timer;
+  const now = Date.now();
+
+  if (t.status === 'running') {
+    t.end += addMs;
+    t.total += addMs;
+    toast(`已增加 ${mins} 分钟`);
+    save(); tick();
+  } else if (t.status === 'paused') {
+    t.remaining += addMs;
+    t.total += addMs;
+    toast(`已增加 ${mins} 分钟`);
+    save(); tick();
+  } else if (t.status === 'overtime') {
+    const overtimeMs = now - t.end;
+    if (addMs > overtimeMs) {
+      t.end += addMs;
+      t.total += addMs;
+      t.status = 'running';
+      t.notified = false;
+      toast(`已增加 ${mins} 分钟，恢复倒计时`);
+    } else {
+      t.end += addMs;
+      t.total += addMs;
+      toast(`已续时 ${mins} 分钟`);
+    }
+    renderControls(); save(); tick();
+  } else {
+    const h = integer('hours',0,999,true) ?? 0;
+    const m = integer('minutes',0,59,true) ?? 0;
+    const s = integer('seconds',0,59,true) ?? 0;
+    let totalSec = Math.min(999*3600+59*60+59, h*3600 + m*60 + s + mins*60);
+    const newH = Math.floor(totalSec / 3600);
+    const newM = Math.floor((totalSec % 3600) / 60);
+    const newS = totalSec % 60;
+    $('hours').value = String(newH);
+    $('minutes').value = String(newM);
+    $('seconds').value = String(newS);
+    state.settings.hours = String(newH);
+    state.settings.minutes = String(newM);
+    state.settings.seconds = String(newS);
+    showError('timer');
+    queueSave();
+    tick();
+  }
+}
+
+document.querySelectorAll('[data-add-minutes]').forEach(btn => {
+  btn.onclick = () => {
+    const m = Number(btn.dataset.addMinutes);
+    if (m > 0) addMinutesToTimer(m);
+  };
+});
+
+/* -------------------------------------------------------------
+   定点模式跨度单位格式化 (隐藏秒规则)
+------------------------------------------------------------- */
+function formatDeadlineSpan(diffMs, isPast = false) {
+  const prefix = isPast ? '<span class="prefix-plus">+</span>' : '';
+  const totalSec = Math.max(0, Math.round(diffMs / 1000));
+  const totalMin = Math.round(diffMs / 60000);
+
+  if (diffMs >= 24 * 3600 * 1000) {
+    const days = Math.floor(totalSec / 86400);
+    const hours = Math.round((totalSec % 86400) / 3600);
+    if (hours === 0) {
+      return `${prefix}<span class="num">${days}</span><span class="unit">天</span>`;
+    }
+    return `${prefix}<span class="num">${days}</span><span class="unit">天</span><span class="num">${hours}</span><span class="unit">h</span>`;
+  }
+  
+  if (diffMs >= 60 * 60 * 1000) {
+    const hours = Math.floor(totalSec / 3600);
+    const mins = Math.round((totalSec % 3600) / 60);
+    if (mins === 0) {
+      return `${prefix}<span class="num">${hours}</span><span class="unit">h</span>`;
+    }
+    return `${prefix}<span class="num">${hours}</span><span class="unit">h</span><span class="num">${mins}</span><span class="unit">min</span>`;
+  }
+
+  const mins = Math.max(1, totalMin);
+  return `${prefix}<span class="num">${mins}</span><span class="unit">min</span>`;
+}
+
+// 点击主屏时间切换秒数显示与跨度单位
+$('timer-time-wrap').onclick = () => {
+  if (state.mode === 'deadline') {
+    state.deadlineCompactMode = !state.deadlineCompactMode;
+    toast(state.deadlineCompactMode ? '已切换至跨度单位' : '已展开精确数字时间');
+    save(); tick();
+  } else {
+    state.showSeconds = !state.showSeconds;
+    save(); tick();
+  }
+};
+
+/* 操作按钮 */
+$('timer-start').onclick = () => {
+  void unlockAudio();
+  const t = state.timer, now = Date.now();
+  if (t.status === 'running') {
+    t.remaining = t.end - now;
+    t.status = 'paused';
+  } else if (t.status === 'paused') {
+    t.end = now + t.remaining;
+    t.status = 'running';
+  } else if (t.status === 'overtime' || t.status === 'past') {
+    state.timer = idleTimer(state.mode);
+  } else {
+    const val = timerValue(now);
+    if (val.error) { showError('timer', val.error); return; }
+    if (val.isPast) {
+      state.timer = {
+        status: 'past',
+        mode: state.mode,
+        end: val.end,
+        total: val.ms,
+        remaining: val.ms,
+        notified: true,
+        isPast: true
+      };
+      toast('定点时间已过去，进入正向累计');
+    } else {
+      state.timer = {
+        status: 'running',
+        mode: state.mode,
+        end: val.end,
+        total: val.ms,
+        remaining: val.ms,
+        notified: false,
+        isPast: false
+      };
+    }
+  }
+  showError('timer'); renderControls(); save(); tick();
+};
+
+$('timer-reset').onclick = () => {
+  state.timer = idleTimer(state.mode);
+  showError('timer'); renderControls(); save(); tick();
+};
+
+$('reminder-toggle').onclick = () => {
+  void unlockAudio();
+  const r = state.reminder;
+  if (r.running) {
+    r.running = false; r.next = 0;
+  } else {
+    const val = intervalValue();
+    if (val.error) { showError('reminder', val.error); return; }
+    r.running = true; r.interval = val.ms; r.next = Date.now() + val.ms;
+  }
+  showError('reminder'); renderControls(); save(); tick();
+};
+
+// 绑定时长与间隔输入
+['hours','minutes','seconds'].forEach(id => {
+  $(id).value = state.settings[id];
+  $(id).addEventListener('input', () => {
+    state.settings[id] = $(id).value;
+    showError('timer');
+    queueSave(); tick();
+  });
+});
+$('interval-value').value = state.settings.interval;
+$('interval-unit').value = state.settings.unit;
+$('interval-value').addEventListener('input', () => {
+  state.settings.interval = $('interval-value').value;
+  showError('reminder'); queueSave(); tick();
+});
+$('interval-unit').addEventListener('change', () => {
+  state.settings.unit = $('interval-unit').value;
+  showError('reminder'); queueSave(); tick();
+});
+
+function setText(id, val) {
+  if ($(id).textContent !== val) $(id).textContent = val;
+}
+function setHTML(id, html) {
+  if ($(id).innerHTML !== html) $(id).innerHTML = html;
+}
+
+/* 主时钟与倒计时 Tick */
+function tick() {
+  const now = Date.now();
+  const date = new Date(now);
+  const t = state.timer;
+  const r = state.reminder;
+
+  setText('clock', clockText(date, state.showSeconds));
+  setText('clock-date', `${date.getMonth()+1}月${date.getDate()}日 · ${['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][date.getDay()]}`);
+
+  // 倒计时结束检查
+  if (t.status === 'running' && now >= t.end) {
+    t.status = 'overtime';
+    if (!t.notified) {
+      t.notified = true;
+      notify('倒计时结束，继续计时');
+    }
+    renderControls(); save();
+  }
+
+  // 间隔提醒检查
+  if (r.running && now >= r.next) {
+    r.last = now;
+    r.next += (Math.floor((now - r.next) / r.interval) + 1) * r.interval;
+    notify('间隔提醒 · ' + clockText(date));
+    save();
+  }
+
+  let readoutHTML = '';
+  let plainTitleText = '';
+  let statusText = '';
+  let endInfo = '';
+  let ratio = 100;
+  let isPastMode = false;
+  let isOvertimeMode = (t.status === 'overtime');
+  let isLongText = false;
+
+  const timerSection = document.querySelector('.timer');
+
+  if (state.mode === 'deadline') {
+    let diff = 0;
+    let targetEnd = 0;
+    let past = false;
+
+    if (t.status === 'running') {
+      diff = Math.max(0, t.end - now);
+      targetEnd = t.end;
+      ratio = (diff / t.total) * 100;
+      statusText = '进行中';
+      endInfo = '结束于 ' + endText(t.end);
+    } else if (t.status === 'paused') {
+      diff = t.remaining;
+      targetEnd = t.end;
+      ratio = (diff / t.total) * 100;
+      statusText = '已暂停';
+      endInfo = '结束于 ' + endText(t.end);
+    } else if (t.status === 'overtime') {
+      diff = now - t.end;
+      ratio = 0;
+      statusText = '继续计时';
+      targetEnd = t.end;
+      past = true;
+      endInfo = '继续计时';
+    } else if (t.status === 'past') {
+      diff = now - t.end;
+      ratio = 0;
+      statusText = '继续计时';
+      isPastMode = true;
+      targetEnd = t.end;
+      past = true;
+      endInfo = '继续计时';
+    } else {
+      // idle
+      const val = timerValue(now);
+      diff = val.ms;
+      targetEnd = val.end;
+      past = val.isPast;
+      if (past) {
+        statusText = '定点已过去';
+        isPastMode = true;
+        ratio = 0;
+        endInfo = '继续计时';
+      } else {
+        ratio = 100;
+        endInfo = '预计结束 ' + endText(targetEnd);
+      }
+    }
+
+    if (state.deadlineCompactMode) {
+      readoutHTML = formatDeadlineSpan(diff, past);
+      plainTitleText = readoutHTML.replace(/<[^>]+>/g, '');
+    } else {
+      const formatted = formatDigital(diff, true);
+      readoutHTML = `${past ? '+' : ''}${formatted}`;
+      plainTitleText = readoutHTML;
+      if (readoutHTML.length > 8) isLongText = true;
+    }
+
+  } else {
+    // 时长模式 (Duration)
+    if (t.status === 'running') {
+      const rem = Math.max(0, t.end - now);
+      ratio = (rem / t.total) * 100;
+      statusText = '进行中';
+      endInfo = '结束于 ' + endText(t.end);
+      readoutHTML = formatDigital(rem, true);
+    } else if (t.status === 'paused') {
+      const rem = t.remaining;
+      ratio = (rem / t.total) * 100;
+      statusText = '已暂停';
+      readoutHTML = formatDigital(rem, true);
+      endInfo = '预计结束 ' + endText(now + rem);
+    } else if (t.status === 'overtime') {
+      const overtimeMs = now - t.end;
+      ratio = 0;
+      statusText = '继续计时';
+      readoutHTML = '+' + formatDigital(overtimeMs, false);
+      endInfo = '继续计时';
+    } else {
+      // idle
+      const val = timerValue(now);
+      if (val.error) {
+        readoutHTML = '00:00';
+      } else {
+        readoutHTML = formatDigital(val.ms, true);
+        endInfo = '预计结束 ' + endText(val.end);
+        ratio = 100;
+      }
+    }
+    plainTitleText = readoutHTML;
+    if (readoutHTML.length > 8) isLongText = true;
+  }
+
+  // DOM 样式与内容同步
+  timerSection.classList.toggle('is-running', t.status === 'running');
+  timerSection.classList.toggle('is-paused', t.status === 'paused');
+  timerSection.classList.toggle('is-overtime', isOvertimeMode);
+  timerSection.classList.toggle('is-past', isPastMode);
+
+  setHTML('timer-readout', readoutHTML);
+  setText('timer-status', statusText);
+  setText('timer-end', endInfo);
+
+  // 蓝色模式：定点已过去或倒计时超时走表
+  $('timer-readout').classList.toggle('past-mode', isPastMode);
+  $('timer-readout').classList.toggle('overtime-mode', isOvertimeMode);
+  $('timer-readout').classList.toggle('long', isLongText);
+
+  // 进度条与波浪动效宽度
+  ratio = Math.max(0, Math.min(100, ratio));
+  $('progress-fill').style.width = ratio + '%';
+  $('timer-progress').setAttribute('aria-valuenow', String(Math.round(ratio)));
+
+  // 波浪动态
+  const showWave = (t.status === 'running' || t.status === 'paused') && ratio > 0 && ratio < 100;
+  $('wave-front').style.display = showWave ? 'block' : (t.status === 'running' ? 'block' : 'none');
+
+  if (r.running) {
+    const remRem = Math.max(0, r.next - now);
+    setText('reminder-readout', formatDigital(remRem, true));
+  }
+
+  const titlePrefix = (t.status === 'running' || t.status === 'past' || t.status === 'overtime') 
+    ? `${plainTitleText} · ${(isPastMode || t.status === 'overtime') ? '继续计时' : '倒计时'}` 
+    : (r.running ? `${formatDigital(Math.max(0, r.next - now), true)} · 提醒` : '计时器');
+  if (document.title !== titlePrefix) document.title = titlePrefix;
+}
+
+// 初始化
+renderSound();
+renderControls();
+initPickers();
+setTimeout(() => {
+  dateWheelCtrl.syncValue();
+  hourWheelCtrl.syncValue();
+  minWheelCtrl.syncValue();
+}, 60);
+
+tick();
+save();
+setInterval(tick, 250);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
+window.addEventListener('pageshow', tick);
+})();
+</script>
+</body></html>
