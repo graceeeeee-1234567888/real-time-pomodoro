@@ -21,6 +21,7 @@
   --picker-item-h:36px;
   /* 统一超时与已过去的清爽蓝色系 */
   --blue-text:#244b7a;
+  --blue-unit:#7b91aa;
   --blue-accent:#38659c;
   --blue-soft-bg:#e9f0f8;
   --blue-line:#b9cbe0;
@@ -84,13 +85,13 @@ h1{font-size:18px;font-weight:600;letter-spacing:.06em}
 }
 .timer-time.past-mode .unit,
 .timer-time.overtime-mode .unit{
-  color:var(--blue-accent);
+  color:var(--blue-unit);
 }
 .timer-time .unit:last-child{margin-right:0}
 .timer-time .prefix-plus{font-size:0.75em;margin-right:4px;vertical-align:baseline;font-weight:700}
 
 .timer-status{color:var(--muted);font-size:12px;min-height:18px;margin-top:10px;font-weight:500;letter-spacing:.02em;transition:opacity .2s,color .25s}
-.timer-status:empty{display:none}
+.timer-status:empty,.end-time:empty{display:none}
 
 /* 进度条与流淌波浪前锋动效 */
 .progress{position:absolute;inset:0;z-index:0;border:1px solid var(--line);background:#f1f4ee;overflow:hidden;border-radius:6px;transition:background .3s,border-color .3s}
@@ -942,19 +943,18 @@ function tick() {
  $('clock').setAttribute('aria-label','当前时间 '+clockText(date,state.clockShowSeconds)+'，点击切换秒数');
  setText('clock-date',(date.getMonth()+1)+'月'+date.getDate()+'日 · '+['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][date.getDay()]);
  const stopwatch=state.mode === 'stopwatch',t=stopwatch ? state.stopwatch : state.timers[state.mode],section=document.querySelector('.timer');
- let ratio=0,status='',end='',readout='',plain='',past=false,remaining=0;
+ const status=t.status === 'paused' ? '已暂停' : '';
+ let ratio=0,end='',readout='',plain='',past=false,remaining=0;
  for (const [name,value] of [['is-running',t.status === 'running'],['is-paused',t.status === 'paused'],['is-overtime',!stopwatch && t.status === 'overtime'],['is-past',!stopwatch && t.status === 'past'],['is-stopwatch',stopwatch]]) section.classList.toggle(name,value);
  if (stopwatch) {
   renderStopwatchReadout(now);plain=formatStopwatch(stopwatchElapsed(now));
-  status=t.status === 'running' ? '进行中' : t.status === 'paused' ? '已暂停' : '待开始';
  } else {
-  if (t.status === 'running') {remaining=Math.max(0,t.end-now);ratio=remaining/t.total*100;status='进行中';end='结束于 '+endText(t.end);}
-  else if (t.status === 'paused') {remaining=t.remaining;ratio=t.total ? remaining/t.total*100 : 0;status='已暂停';}
-  else if (['overtime','past'].includes(t.status)) {remaining=Math.max(0,now-t.end);past=true;status='继续计时';end='继续计时';}
+  if (t.status === 'running') {remaining=Math.max(0,t.end-now);ratio=remaining/t.total*100;end='结束于 '+endText(t.end);}
+  else if (t.status === 'paused') {remaining=t.remaining;ratio=t.total ? remaining/t.total*100 : 0;}
+  else if (['overtime','past'].includes(t.status)) {remaining=Math.max(0,now-t.end);past=true;}
   else {
    const value=timerValue(state.mode,now);
-   if (!value.error) {remaining=value.ms;past=value.isPast;ratio=past ? 0 : 100;end=past ? '定点已过去' : '预计结束 '+endText(value.end);}
-   status='待开始';
+   if (!value.error) {remaining=value.ms;past=value.isPast;ratio=past ? 0 : 100;end=past ? '' : '预计结束 '+endText(value.end);}
   }
   const compact=state.mode === 'deadline' ? state.deadlineCompactMode : state.durationCompactMode;
   readout=compact ? formatSpan(remaining,past) : (past ? '+' : '')+formatDigital(remaining,!past);
