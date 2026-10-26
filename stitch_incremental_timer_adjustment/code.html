@@ -351,15 +351,6 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 .tabs button::after{content:"";position:absolute;right:7px;top:50%;width:4px;height:4px;margin-top:-2px;border-radius:50%;background:var(--accent);visibility:hidden}
 .tabs button[data-background-running=true]::after{visibility:visible}
 .timer-time-wrap:focus-visible,.picker-col:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
-.timer.is-stopwatch .readout{border:1px solid var(--line);border-radius:6px;background:#f0f3ee}
-.timer.is-stopwatch .timer-time{font-size:clamp(42px,9vw,80px)}
-.timer.is-stopwatch .timer-time.long{font-size:clamp(28px,6.5vw,54px)}
-.lap-records{max-width:560px;margin:18px auto 0;max-height:216px;overflow:auto;scrollbar-width:thin}
-.lap-list{list-style:none;margin:0;padding:0;font-variant-numeric:tabular-nums}
-.lap-list li{display:grid;grid-template-columns:32px minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center;padding:10px 8px;border-bottom:1px solid var(--line);font-size:13px}
-.lap-list li span:first-child{color:var(--muted);font-size:11px;text-align:left}
-.lap-list li span:nth-child(2){font-weight:600;text-align:right}
-.lap-list li span:last-child{color:var(--muted);text-align:right}
 .deadline-layout{display:grid;grid-template-columns:36px minmax(0,1fr);gap:4px;align-items:center}
 .return-today{width:36px;height:36px;min-height:36px;padding:0;color:#87948a;background:transparent;border:0;border-radius:6px}
 .return-today svg{width:16px;height:16px}
@@ -368,7 +359,6 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 .ios-picker-wrapper{width:100%;min-width:0}
 .ios-picker-columns{z-index:3}
 .ios-picker-mask-top,.ios-picker-mask-bottom{z-index:4}
-.timer.is-stopwatch .end-time{display:none}
 .ios-picker-highlight{top:60px}
 .ios-picker-mask-top{top:6px}
 .ios-picker-mask-bottom{bottom:6px}
@@ -376,13 +366,65 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 @media(max-width:560px){
 .header-right{gap:4px}.clock{font-size:30px;min-width:136px}
 .tabs button{min-width:80px;padding:5px 14px}
-.timer.is-stopwatch .timer-time{font-size:clamp(36px,10.5vw,54px)}
-.timer.is-stopwatch .timer-time.long{font-size:clamp(24px,7.5vw,40px)}
 .ios-picker-wrapper{padding-left:6px;padding-right:6px}
 .picker-item{font-size:14px;padding:0 2px}.picker-item.is-selected{font-size:15px}
 .date-tag{width:24px;margin-left:4px;font-size:10px}.date-unit-label{margin-right:2px}.picker-col-colon{flex-basis:10px}
 }
-@media(max-width:360px){.clock{font-size:26px;min-width:120px}.lap-list li{gap:6px;font-size:12px}}
+@media(max-width:360px){.clock{font-size:26px;min-width:120px}}
+
+
+/* 任务接力 */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.timer.is-relay .readout{border:1px solid var(--line);border-radius:6px;background:#f1f4ee}
+.timer.is-relay .settings{max-width:560px}
+.timer.is-relay .end-time{display:none}
+.relay-current{position:relative;z-index:2;max-width:100%;font-size:14px;color:var(--muted);margin-top:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.relay-track{display:flex;gap:4px;width:100%;margin-top:22px;min-height:44px;position:relative;z-index:3;touch-action:pan-y}
+.relay-piece{position:relative;isolation:isolate;flex:1 1 0;min-width:0;height:44px;min-height:44px;padding:0 5px;border:0;border-radius:3px;overflow:hidden;background:var(--task-tint);color:var(--ink);cursor:grab;touch-action:none;transition:box-shadow .16s,opacity .16s}
+.relay-piece:hover:not(:disabled){background:var(--task-tint);box-shadow:inset 0 0 0 1px var(--task-color)}
+.relay-piece[data-fixed=true]{cursor:default}
+.relay-piece .relay-fill{position:absolute;inset:0 auto 0 0;background:var(--task-color);opacity:.7;width:0;z-index:-1;transition:width .24s linear}
+.relay-piece .relay-piece-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;pointer-events:none}
+.relay-piece[aria-current=step]{box-shadow:inset 0 -2px var(--task-color)}
+.relay-piece.drag-slot{opacity:.25;outline:1px dashed var(--task-color);outline-offset:-1px}
+.relay-drag-ghost{position:fixed;z-index:1000;pointer-events:none;margin:0;opacity:.96;box-shadow:0 8px 22px #23392e26;cursor:grabbing;transform:scale(1.04);transition:none}
+body.relay-dragging{cursor:grabbing;user-select:none}
+.relay-options{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:0 0 12px}
+#relay-loop{color:#999;background:transparent;border:0;transition:color .18s}
+#relay-loop:hover:not(:disabled){color:#777;background:transparent}
+#relay-loop[aria-pressed=true]{color:#234f35}
+#relay-loop[aria-pressed=true]:hover:not(:disabled){color:#173d27;background:transparent}
+.relay-auto{display:flex;flex-direction:column;align-items:center}
+.relay-auto-label{font-size:10px;line-height:1.4;color:var(--muted);white-space:nowrap}
+.relay-switch{width:44px;height:44px;min-height:44px;padding:0;border:0;border-radius:8px;background:transparent}
+.relay-switch:hover:not(:disabled){background:transparent}
+.relay-switch-track{position:relative;display:block;width:40px;height:22px;border-radius:999px;background:var(--line);transition:background-color .18s ease}
+.relay-switch-track::after{content:"";position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #23392e1a;transform:translateX(0);transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+.relay-switch[aria-checked=true] .relay-switch-track{background:var(--accent)}
+.relay-switch[aria-checked=true] .relay-switch-track::after{transform:translateX(18px)}
+.relay-tasks{display:flex;flex-direction:column;gap:8px}
+.relay-task{display:grid;grid-template-columns:24px minmax(0,1fr) 48px;gap:6px;align-items:center;padding:5px 8px;border:1px solid var(--line);border-radius:8px;text-align:left;position:relative}
+.relay-task-body{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,4fr);gap:6px;align-items:center;min-width:0}
+.relay-task[data-current=true]{border-color:var(--task-color)}
+.relay-task[data-complete=true]{opacity:.65}
+.relay-color{position:relative;width:24px;height:34px;display:flex;align-items:center;justify-content:center}
+.relay-color::before{content:attr(data-sequence);font-size:var(--sequence-size,14px);font-weight:600;line-height:1;color:var(--task-color);opacity:1;font-variant-numeric:tabular-nums;pointer-events:none}
+.relay-color input{position:absolute;inset:0;width:100%;height:100%;min-height:0;opacity:0;cursor:pointer;padding:0;border:0}
+.relay-color:focus-within{outline:2px solid var(--accent);border-radius:6px}
+.relay-name{width:100%;min-height:32px;border:0;border-radius:4px;padding:3px 5px;font-size:13px;background:transparent}
+.relay-time-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:3px;min-width:0}
+.relay-time-fields label{display:flex;align-items:center;gap:2px;min-width:0;color:var(--muted);font-size:10px}
+.relay-time-fields label span{flex-shrink:0}
+.relay-time-fields input{width:100%;min-width:0;min-height:30px;padding:3px 1px;text-align:center;border-radius:5px;font-size:12px}
+.relay-time-fields label:first-child input{width:100%}
+.relay-task-tools{grid-column:3;grid-row:1;display:flex;flex-direction:column;align-items:center;gap:0}
+.relay-task-tools button{width:24px;height:24px;min-height:24px;padding:4px;color:var(--muted);border-radius:5px}
+.relay-task-tools svg{width:15px;height:15px}
+.relay-row-actions{display:flex}
+.relay-task-error{grid-column:2 / -1;color:var(--error);font-size:11px}
+.relay-task-error:empty{display:none}
+.relay-add{margin:10px auto 0}
+@media(max-width:560px){.relay-track{gap:3px}.relay-piece{padding:0 3px}.relay-piece .relay-piece-name{font-size:10px}.relay-task{padding:6px;gap:3px 4px;grid-template-columns:20px minmax(0,1fr)}.relay-color{width:20px}.relay-time-fields{gap:2px}.relay-time-fields label{gap:1px;font-size:9px}.relay-time-fields input{font-size:10px;min-height:30px}.relay-task-tools{grid-column:2;grid-row:2;flex-direction:row;justify-content:flex-end;gap:4px;width:100%}.relay-task-tools button{width:28px;height:24px;min-height:24px}}
 
 </style>
 </head>
@@ -399,11 +441,11 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 </div>
 </header>
 <main>
-<section aria-label="倒计时" class="timer">
+<section aria-label="计时器" class="timer">
 <div aria-label="计时方式" class="tabs" role="group">
 <button aria-pressed="true" class="" id="mode-duration">时长</button>
 <button aria-pressed="false" class="" id="mode-deadline">定点</button>
-<button aria-pressed="false" id="mode-stopwatch">段计时</button>
+<button aria-pressed="false" id="mode-relay">任务接力</button>
 </div>
 <div class="readout">
 <div aria-label="剩余时间比例" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0" class="progress" id="timer-progress" role="progressbar">
@@ -417,7 +459,10 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 <div class="timer-time-wrap" id="timer-time-wrap" title="点击切换秒数显示与跨度单位">
 <div aria-label="剩余时间" aria-live="off" class="timer-time" id="timer-readout" role="timer">25:00</div>
 </div>
+<p class="relay-current" id="relay-current" hidden></p>
 <p class="timer-status" id="timer-status" role="status"></p>
+<div class="relay-track" id="relay-track" role="group" aria-label="任务接力进度，拖动或按左右方向键调整后续顺序" hidden></div>
+<span class="sr-only" id="relay-announcement" aria-live="polite"></span>
 </div>
 <div class="settings">
 <!-- 时长面板 -->
@@ -467,15 +512,18 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 </div>
 </div>
 </div>
+<div id="relay-panel" hidden>
+<div class="relay-options"><div class="relay-auto"><span class="relay-auto-label" id="relay-auto-label">自动下一项</span><button class="relay-switch" id="relay-pause-between" type="button" role="switch" aria-checked="true" aria-labelledby="relay-auto-label" title="到点提醒并自动开始下一项"><span class="relay-switch-track" aria-hidden="true"></span></button></div><button class="icon-button" id="relay-loop" aria-pressed="false" aria-label="列表循环 开" title="列表循环 开"></button></div>
+<div id="relay-tasks" class="relay-tasks"></div>
+<button class="icon-button relay-add" id="relay-add" title="添加任务" aria-label="添加任务"></button>
+</div>
 <p class="error" id="timer-error" role="alert"></p>
 </div>
 <div class="actions">
 <button aria-label="开始" class="primary" id="timer-start" title="开始"><svg aria-hidden="true" fill="currentColor" viewbox="0 0 24 24"><path d="m8 5 11 7-11 7z"></path></svg></button>
-<button class="secondary" id="timer-lap" aria-label="记录一段" title="记录一段" hidden disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V4m0 1c4-4 8 4 12 0v9c-4 4-8-4-12 0"/></svg></button>
 <button aria-label="重置" class="secondary" id="timer-reset" title="重置"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.5 7M3 4v7h7"></path></svg></button>
 </div>
 <p class="end-time" id="timer-end"></p>
-<div class="lap-records" id="lap-records" role="region" aria-label="分段记录" tabindex="0" hidden><ol class="lap-list" id="lap-list" aria-label="每段耗时与累计耗时，最新在前"></ol></div>
 </section>
 <section aria-label="间隔提醒" class="reminder">
 <div class="reminder-row">
@@ -503,8 +551,8 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 const $ = id => document.getElementById(id);
 const KEY = 'adhd-timer-v3';
 const ITEM_H = 36, MAX_DATE = 8640000000000000, MAX_DURATION = (999*3600+59*60+59)*1000;
-const MODES = ['duration','deadline','stopwatch'];
-const modeNames = {duration:'时长',deadline:'定点',stopwatch:'段计时'};
+const MODES = ['duration','deadline','relay'];
+const modeNames = {duration:'时长',deadline:'定点',relay:'任务接力'};
 const pad = n => String(n).padStart(2,'0');
 const dateValue = d => String(d.getFullYear()).padStart(4,'0')+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const clockText = (d,seconds=true) => pad(d.getHours())+':'+pad(d.getMinutes())+(seconds ? ':'+pad(d.getSeconds()) : '');
@@ -523,11 +571,16 @@ function endText(ms) {
 }
 const idleTimer = mode => ({status:'idle',mode,end:0,total:0,remaining:0,notified:false,isPast:false});
 const nextHour = new Date(Date.now()+3600000); nextHour.setMinutes(0,0,0);
+const relayPalette=['#72957d','#7897b5','#b89a6a','#a586ad','#bf8782','#78a5a3'];
+const newTask=(id,name,duration,color) => ({id,name,duration,color});
+function defaultRelay() {return {status:'idle',tasks:[newTask('task-1','任务1',1500000,relayPalette[0]),newTask('task-2','任务2',300000,relayPalette[1])],currentId:null,elapsed:0,startedAt:0,completed:[],pauseBetween:false,loop:false};}
 const state = {
  sound:true, clockShowSeconds:true, durationCompactMode:false, deadlineCompactMode:true, mode:'duration',
  settings:{hours:'0',minutes:'25',seconds:'0',date:dateValue(nextHour),hour:pad(nextHour.getHours()),minute:pad(nextHour.getMinutes()),interval:'5',unit:'60000'},
  timers:{duration:idleTimer('duration'),deadline:idleTimer('deadline')},
+ // Retain legacy stopwatch data without mapping elapsed records into a task schedule.
  stopwatch:{status:'idle',elapsed:0,startedAt:0,laps:[]},
+ relay:defaultRelay(),
  reminder:{running:false,interval:300000,next:0,last:0}
 };
 const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -561,6 +614,8 @@ try {
   else if (typeof saved.showSeconds === 'boolean') state.clockShowSeconds = saved.showSeconds;
   for (const key of ['durationCompactMode','deadlineCompactMode']) if (typeof saved[key] === 'boolean') state[key] = saved[key];
   if (MODES.includes(saved.mode)) state.mode = saved.mode;
+  else if (saved.mode === 'stopwatch') state.mode='relay';
+  if (isObject(saved.relay)) restoreRelay(saved.relay);
   const settings = isObject(saved.settings) ? saved.settings : {};
   for (const [key,min,max,blank] of [['hours',0,999,true],['minutes',0,59,true],['seconds',0,59,true],['hour',0,23,false],['minute',0,59,false],['interval',1,999,false]]) {
    if (numericSetting(settings[key],min,max,blank)) state.settings[key] = settings[key];
@@ -594,7 +649,7 @@ try {
 let saveJob;
 function save() {
  clearTimeout(saveJob);
- try { localStorage.setItem(KEY,JSON.stringify({version:6,...state})); $('page-note').textContent = '提醒需保持页面打开。'; }
+ try { localStorage.setItem(KEY,JSON.stringify({version:7,...state})); $('page-note').textContent = '提醒需保持页面打开。'; }
  catch { $('page-note').textContent = '当前浏览器无法保存；刷新会丢失计时。'; }
 }
 function queueSave() { clearTimeout(saveJob); saveJob = setTimeout(save,200); }
@@ -667,7 +722,7 @@ function intervalValue() {
  const value = integer('interval-value',1,999), unit = Number($('interval-unit').value);
  return value !== null && [1000,60000,3600000].includes(unit) ? {ms:value*unit} : {error:'间隔请输入 1–999 的整数。'};
 }
-const errors = {duration:'',deadline:'',stopwatch:''};
+const errors = {duration:'',deadline:'',relay:''};
 const rejectedDurationInput = {hours:false,minutes:false,seconds:false};
 function durationInputMessage() {
  if (rejectedDurationInput.minutes || rejectedDurationInput.seconds) return '限 0–59 整数';
@@ -785,7 +840,7 @@ $('return-today').onclick = () => {
 const playPath = '<path d="m8 5 11 7-11 7z"/>';
 const pausePath = '<path d="M7 5h4v14H7zm6 0h4v14h-4z"/>';
 const completePath = '<path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
-function modeIsRunning(mode) { return mode === 'stopwatch' ? state.stopwatch.status === 'running' : ['running','overtime','past'].includes(state.timers[mode].status); }
+function modeIsRunning(mode) { return mode === 'relay' ? state.relay.status === 'running' : ['running','overtime','past'].includes(state.timers[mode].status); }
 function renderTabs() {
  for (const mode of MODES) {
   const tab=$('mode-'+mode), background=state.mode !== mode && modeIsRunning(mode);
@@ -793,59 +848,298 @@ function renderTabs() {
   tab.setAttribute('aria-label',modeNames[mode]+(background ? '，后台运行中' : ''));
  }
 }
-let stopwatchFrame=0;
-function renderStopwatchReadout(now=Date.now()) {
- const text=formatStopwatch(stopwatchElapsed(now));
- setText('timer-readout',text);$('timer-readout').classList.toggle('long',text.length>11);
- $('timer-readout').setAttribute('aria-label','累计时间 '+text);
-}
-function syncStopwatchAnimation() {
- const shouldRun=state.mode === 'stopwatch' && state.stopwatch.status === 'running' && !document.hidden;
- if (!shouldRun) {if (stopwatchFrame) cancelAnimationFrame(stopwatchFrame);stopwatchFrame=0;return;}
- if (stopwatchFrame) return;
- const frame=() => {stopwatchFrame=0;if (state.mode !== 'stopwatch' || state.stopwatch.status !== 'running' || document.hidden) return;renderStopwatchReadout();stopwatchFrame=requestAnimationFrame(frame);};
- stopwatchFrame=requestAnimationFrame(frame);
-}
-function renderLaps() {
- const list=$('lap-list');list.replaceChildren();
- const laps=state.stopwatch.laps;
- for (let i=laps.length-1;i>=0;i--) {
-  const lap=laps[i],row=document.createElement('li');
-  row.setAttribute('aria-label','第 '+(i+1)+' 段，本段 '+formatStopwatch(lap.split)+'，累计 '+formatStopwatch(lap.elapsed));
-  for (const text of [pad(i+1),formatStopwatch(lap.split),formatStopwatch(lap.elapsed)]) {const span=document.createElement('span');span.textContent=text;row.append(span);}
-  list.append(row);
+
+function restoreRelay(source) {
+ const r=defaultRelay(),ids=new Set();
+ if (Array.isArray(source.tasks)) {
+  r.tasks=[];
+  for (const t of source.tasks) {
+   if (!isObject(t) || typeof t.id !== 'string' || !t.id || t.id.length>100 || ids.has(t.id) || !numberIn(t.duration,1000,MAX_DURATION) || t.duration%1000) continue;
+   ids.add(t.id);
+   r.tasks.push(newTask(t.id,typeof t.name === 'string' ? t.name.trim().slice(0,80) || '任务' : '任务',t.duration,typeof t.color === 'string' && /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : relayPalette[r.tasks.length%relayPalette.length]));
+  }
  }
- $('lap-records').hidden=state.mode !== 'stopwatch' || !laps.length;
+ r.pauseBetween=source.pauseBetween === true;r.loop=source.loop === true;
+ if (['idle','running','paused','done'].includes(source.status)) r.status=source.status;
+ if (r.status !== 'idle' && Array.isArray(source.completed)) {
+  const seen=new Set();
+  for (const item of source.completed) if (isObject(item) && ids.has(item.id) && !seen.has(item.id) && numberIn(item.duration,1000,MAX_DURATION)) {
+   seen.add(item.id);r.completed.push({id:item.id,duration:item.duration});
+  }
+ }
+ if (['running','paused'].includes(r.status)) {
+  if (ids.has(source.currentId) && !r.completed.some(c => c.id === source.currentId) && numberIn(source.elapsed,0,MAX_DURATION) && (r.status !== 'running' || numberIn(source.startedAt,1,MAX_DATE))) {
+   r.currentId=source.currentId;r.elapsed=source.elapsed;r.startedAt=r.status === 'running' ? source.startedAt : 0;
+  } else {r.status='idle';r.completed=[];}
+ }
+ if (!r.tasks.length) {r.status='idle';r.completed=[];}
+ state.relay=r;
+ normalizeRelayOrder();
 }
+function relayCurrent() {return state.relay.tasks.find(t => t.id === state.relay.currentId);}
+function relayElapsed(now=Date.now()) {
+ const r=state.relay;
+ return r.elapsed+(r.status === 'running' ? Math.max(0,now-r.startedAt) : 0);
+}
+function relayRemaining(now=Date.now()) {
+ const r=state.relay,t=relayCurrent() || (r.status === 'idle' ? r.tasks[0] : null);
+ return t ? Math.max(0,t.duration-(r.status === 'idle' ? 0 : relayElapsed(now))) : 0;
+}
+function relayPending() {
+ const r=state.relay,done=new Set(r.completed.map(c => c.id));
+ return r.tasks.filter(t => !done.has(t.id) && t.id !== r.currentId);
+}
+function normalizeRelayOrder() {
+ const r=state.relay;
+ if (!['running','paused'].includes(r.status)) return;
+ const byId=new Map(r.tasks.map(t => [t.id,t])),used=new Set(),ordered=[];
+ for (const id of [...r.completed.map(t => t.id),r.currentId]) if (byId.has(id) && !used.has(id)) {used.add(id);ordered.push(byId.get(id));}
+ r.tasks=ordered.concat(r.tasks.filter(t => !used.has(t.id)));
+}
+function relayCanMove(id) {
+ const r=state.relay;
+ return !['running','paused'].includes(r.status) || (id !== r.currentId && !r.completed.some(c => c.id === id));
+}
+function resetRelay() {
+ const r=state.relay;
+ r.status='idle';r.currentId=null;r.elapsed=0;r.startedAt=0;r.completed=[];
+}
+function beginRelay(now) {
+ const r=state.relay;
+ if (!r.tasks.length) return;
+ r.status='running';r.currentId=r.tasks[0].id;r.elapsed=0;r.startedAt=now;r.completed=[];
+}
+function settleRelay(now,force=false) {
+ const r=state.relay;
+ if (r.status !== 'running' && !(force && r.status === 'paused')) return false;
+ let t=relayCurrent(),elapsed=relayElapsed(now),count=0;
+ const wasPaused=r.status === 'paused';
+ if (!t || elapsed<t.duration) return false;
+ if (relayDrag) finishRelayDrag(false);
+ while (t && elapsed>=t.duration) {
+  elapsed-=t.duration;count++;
+  r.completed.push({id:t.id,duration:t.duration});
+  let next=relayPending()[0];
+  if (!next && !r.loop) {
+   r.status='done';r.currentId=null;r.elapsed=0;r.startedAt=0;break;
+  }
+  if (!next) {
+   r.completed=[];next=r.tasks[0];
+   if (!next) {resetRelay();break;}
+   if (!r.pauseBetween && !wasPaused) {
+    const cycle=r.tasks.reduce((sum,item) => sum+item.duration,0);
+    const skipped=Math.floor(elapsed/cycle);
+    if (skipped) {elapsed%=cycle;count+=skipped*r.tasks.length;}
+   }
+  }
+  r.currentId=next.id;
+  if (r.pauseBetween || wasPaused) {
+   r.status='paused';r.elapsed=0;r.startedAt=0;break;
+  }
+  t=next;r.elapsed=elapsed;r.startedAt=now;
+ }
+ normalizeRelayOrder();
+ const next=relayCurrent();
+ notify(r.status === 'done' ? '任务接力完成' : count>1 ? '任务接力已推进 · '+next.name : '任务完成 · '+(r.status === 'paused' ? '已暂停，下一项：' : '开始：')+next.name);
+ return true;
+}
+function relayTint(hex) {
+ const rgb=[1,3,5].map(i => Math.round(parseInt(hex.slice(i,i+2),16)*.18+248*.82));
+ return 'rgb('+rgb.join(',')+')';
+}
+function relaySvg(path,fill=false) {
+ return '<svg viewBox="0 0 24 24" fill="'+(fill ? 'currentColor' : 'none')+'" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+path+'</svg>';
+}
+function relayIcon(label,path,handler) {
+ const button=document.createElement('button');button.type='button';button.title=label;button.setAttribute('aria-label',label);button.innerHTML=relaySvg(path);button.onclick=handler;return button;
+}
+const relayResetPath='<path d="M3 11a9 9 0 1 1 2.5 7M3 4v7h7"/>';
+const relayLoopPath='<path d="m17 2 4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4m14-1v2a3 3 0 0 1-3 3H3"/>';
+let relayDrag=null;
+function relayAnimateOrder(container,order,animate=true) {
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ if (reduced) for (const node of container.children) for (const animation of node.getAnimations()) animation.cancel();
+ const old=new Map([...container.children].map(node => [node.dataset.id,node.getBoundingClientRect()]));
+ if (order.some((id,i) => container.children[i]?.dataset.id !== id)) {
+  for (const node of container.children) for (const animation of node.getAnimations()) animation.cancel();
+  const nodes=new Map([...container.children].map(node => [node.dataset.id,node]));
+  for (const id of order) if (nodes.has(id)) container.append(nodes.get(id));
+  if (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+   for (const node of container.children) {
+    const before=old.get(node.dataset.id),after=node.getBoundingClientRect();
+    if (!before || (relayDrag && relayDrag.id === node.dataset.id && container.id === 'relay-track')) continue;
+    const x=before.left-after.left,y=before.top-after.top;
+    if (Math.abs(x)+Math.abs(y)<.5) continue;
+    for (const animation of node.getAnimations()) animation.cancel();
+    node.animate([{transform:'translate('+x+'px,'+y+'px)'},{transform:'translate(0,0)'}],{duration:220,easing:'cubic-bezier(.2,.8,.2,1)'});
+   }
+  }
+ }
+}
+function relayApplyOrder(ids,announce=false) {
+ const r=state.relay,byId=new Map(r.tasks.map(t => [t.id,t]));
+ const fixed=r.tasks.filter(t => !relayCanMove(t.id));
+ r.tasks=fixed.concat(ids.map(id => byId.get(id)).filter(Boolean));
+ normalizeRelayOrder();
+ renderRelay(true);save();
+ if (announce) setText('relay-announcement','顺序已调整');
+}
+function moveRelayTask(id,delta) {
+ const ids=state.relay.tasks.filter(t => relayCanMove(t.id)).map(t => t.id),index=ids.indexOf(id),target=index+delta;
+ if (index<0 || target<0 || target>=ids.length) return;
+ ids.splice(target,0,ids.splice(index,1)[0]);relayApplyOrder(ids,true);
+ const piece=[...$('relay-track').children].find(node => node.dataset.id === id);
+ piece?.focus({preventScroll:true});
+}
+function removeRelayTask(id) {
+ const now=Date.now();updateRunningTimers(now);
+ const r=state.relay,wasCurrent=r.currentId === id,oldStatus=r.status;
+ r.tasks=r.tasks.filter(t => t.id !== id);r.completed=r.completed.filter(t => t.id !== id);
+ if (!r.tasks.length) resetRelay();
+ else if (wasCurrent) {
+  const next=relayPending()[0];
+  r.currentId=next?.id || null;r.elapsed=0;r.startedAt=oldStatus === 'running' && next ? now : 0;
+  r.status=next ? oldStatus : 'done';
+ }
+ normalizeRelayOrder();renderRelay(true);renderControls();save();tick();
+}
+function commitRelayDuration(row,id) {
+ const task=state.relay.tasks.find(t => t.id === id);if (!task) return false;
+ const inputs=[...row.querySelectorAll('.relay-time-fields input')];
+ const values=inputs.map((input,i) => {
+  const raw=input.value.trim(),max=i === 0 ? 999 : 59;
+  const valid=!input.validity.badInput && (raw === '' || /^\d+$/.test(raw) && Number(raw)<=max);
+  input.setAttribute('aria-invalid',String(!valid));return valid ? Number(raw || 0) : null;
+ });
+ const error=row.querySelector('.relay-task-error');
+ if (values.includes(null)) {error.textContent='限 '+(values[0] === null ? '0–999' : '0–59')+' 整数';return false;}
+ const duration=(values[0]*3600+values[1]*60+values[2])*1000;
+ if (!duration) {inputs.forEach(input => input.setAttribute('aria-invalid','true'));error.textContent='至少 1 秒';return false;}
+ error.textContent='';errors.relay='';
+ if (state.mode === 'relay') $('timer-error').textContent='';
+ if (task.duration === duration) return true;
+ const now=Date.now();updateRunningTimers(now);
+ const r=state.relay,elapsed=relayElapsed(now);
+ task.duration=duration;
+ if (r.currentId === id) {r.elapsed=elapsed;r.startedAt=r.status === 'running' ? now : 0;settleRelay(now,true);}
+ renderRelay();renderControls();save();tick();return true;
+}
+function makeRelayRow(task) {
+ const row=document.createElement('div');row.className='relay-task';row.dataset.id=task.id;
+ const colorLabel=document.createElement('label');colorLabel.className='relay-color';
+ const color=document.createElement('input');color.type='color';color.value=task.color;color.title='任务颜色';color.setAttribute('aria-label','任务颜色');
+ color.oninput=() => {task.color=color.value;renderRelay();queueSave();};
+ colorLabel.append(color);
+ const name=document.createElement('input');name.className='relay-name';name.value=task.name;name.maxLength=80;name.placeholder='任务名称';name.setAttribute('aria-label','任务名称');
+ name.oninput=() => {task.name=name.value.trim() || '任务';renderRelay();queueSave();};
+ name.onblur=() => {name.value=task.name;};
+ const fields=document.createElement('div');fields.className='relay-time-fields';
+ const units=['时','分','秒'],values=[Math.floor(task.duration/3600000),Math.floor(task.duration/60000)%60,task.duration/1000%60];
+ units.forEach((unit,i) => {
+  const label=document.createElement('label'),input=document.createElement('input'),span=document.createElement('span');
+  input.type='number';input.inputMode='numeric';input.min='0';input.max=i === 0 ? '999' : '59';input.step='1';input.value=String(values[i]);input.placeholder='0';input.setAttribute('aria-label','任务时长：'+unit);input.setAttribute('aria-describedby','relay-error-'+task.id);input.setAttribute('aria-invalid','false');
+  input.addEventListener('change',() => commitRelayDuration(row,task.id));
+  input.addEventListener('keydown',event => {if (event.key === 'Enter') {event.preventDefault();commitRelayDuration(row,task.id);input.blur();}});
+  input.addEventListener('wheel',event => {if (document.activeElement === input) event.preventDefault();},{passive:false});
+  span.textContent=unit;label.append(input,span);fields.append(label);
+ });
+ const tools=document.createElement('div');tools.className='relay-task-tools';
+ const order=document.createElement('div');order.className='relay-row-actions';
+ const up=relayIcon('向前移动','<path d="m14 6-6 6 6 6"/>',() => moveRelayTask(task.id,-1));up.dataset.action='up';
+ const down=relayIcon('向后移动','<path d="m10 6 6 6-6 6"/>',() => moveRelayTask(task.id,1));down.dataset.action='down';
+ order.append(up,down);
+ const actions=document.createElement('div');actions.className='relay-row-actions';
+ const restart=relayIcon('当前任务从头计时',relayResetPath,() => {
+  const now=Date.now();updateRunningTimers(now);const r=state.relay;
+  if (r.currentId !== task.id) return;
+  if (!commitRelayDuration(row,task.id) || r.currentId !== task.id) return;
+  r.elapsed=0;r.startedAt=r.status === 'running' ? now : 0;renderRelay();save();tick();
+ });restart.dataset.action='restart';
+ const remove=relayIcon('删除任务','<path d="m6 6 12 12M6 18 18 6"/>',() => removeRelayTask(task.id));
+ actions.append(restart,remove);tools.append(order,actions);
+ const error=document.createElement('p');error.className='relay-task-error';error.id='relay-error-'+task.id;error.setAttribute('role','alert');
+ const body=document.createElement('div');body.className='relay-task-body';body.append(name,fields);
+ row.append(colorLabel,body,tools,error);return row;
+}
+function renderRelay(animate=false) {
+ const r=state.relay,track=$('relay-track'),list=$('relay-tasks'),ids=r.tasks.map(t => t.id),done=new Map(r.completed.map(t => [t.id,t.duration]));
+ for (const parent of [track,list]) for (const node of [...parent.children]) if (!ids.includes(node.dataset.id)) node.remove();
+ for (const [sequenceIndex,task] of r.tasks.entries()) {
+  let piece=[...track.children].find(node => node.dataset.id === task.id);
+  if (!piece) {
+   piece=document.createElement('button');piece.type='button';piece.className='relay-piece';piece.dataset.id=task.id;
+   const fill=document.createElement('span');fill.className='relay-fill';
+   const label=document.createElement('span');label.className='relay-piece-name';piece.append(fill,label);track.append(piece);
+  }
+  let row=[...list.children].find(node => node.dataset.id === task.id);
+  if (!row) {row=makeRelayRow(task);list.append(row);}
+  for (const node of [piece,row]) {node.style.setProperty('--task-color',task.color);node.style.setProperty('--task-tint',relayTint(task.color));}
+  const current=r.currentId === task.id,complete=done.has(task.id) || r.status === 'done',fixed=!relayCanMove(task.id);
+  const weight=done.get(task.id) || task.duration;
+  piece.style.flexGrow=String(weight);piece.dataset.fixed=String(fixed);piece.setAttribute('aria-current',current ? 'step' : 'false');
+  piece.querySelector('.relay-piece-name').textContent=task.name;
+  piece.setAttribute('aria-label',task.name+'，'+formatDigital(weight)+(fixed ? current ? '，当前任务' : '，已完成' : '，可拖动或按左右方向键排序'));
+  piece.title=task.name+' · '+formatDigital(weight)+(fixed ? current ? ' · 当前任务' : ' · 已完成' : ' · 拖动调整顺序');
+  row.dataset.current=String(current);row.dataset.complete=String(complete);row.setAttribute('role','group');row.setAttribute('aria-label','第 '+(sequenceIndex+1)+' 项，'+task.name);
+  const marker=row.querySelector('.relay-color'),colorInput=marker.querySelector('input');
+  marker.dataset.sequence=String(sequenceIndex+1);marker.style.setProperty('--sequence-size',sequenceIndex>=99 ? '10px' : sequenceIndex>=9 ? '12px' : '14px');
+  colorInput.title='第 '+(sequenceIndex+1)+' 项颜色';colorInput.setAttribute('aria-label',colorInput.title);
+  const movable=r.tasks.filter(t => relayCanMove(t.id)),index=movable.findIndex(t => t.id === task.id);
+  row.querySelector('[data-action=up]').disabled=fixed || index<=0;
+  row.querySelector('[data-action=down]').disabled=fixed || index<0 || index>=movable.length-1;
+  row.querySelector('[data-action=restart]').disabled=!current;
+  if (!row.contains(document.activeElement)) {
+   row.querySelector('.relay-name').value=task.name;row.querySelector('input[type=color]').value=task.color;
+  }
+ }
+ relayAnimateOrder(track,ids,animate);relayAnimateOrder(list,ids,animate);
+ $('relay-pause-between').setAttribute('aria-checked',String(!r.pauseBetween));
+ $('relay-pause-between').title=r.pauseBetween ? '到点提醒并暂停，点击继续后开始下一项' : '到点提醒并自动开始下一项';
+ $('relay-loop').setAttribute('aria-pressed',String(r.loop));
+ const loopLabel='列表循环 '+(r.loop ? '关' : '开');$('relay-loop').title=loopLabel;$('relay-loop').setAttribute('aria-label',loopLabel);
+ if (!$('relay-loop').innerHTML) $('relay-loop').innerHTML=relaySvg(relayLoopPath);
+ if (!$('relay-add').innerHTML) $('relay-add').innerHTML=relaySvg('<path d="M12 5v14M5 12h14"/>');
+ renderRelayProgress();
+}
+function renderRelayProgress(now=Date.now()) {
+ const r=state.relay,done=new Set(r.completed.map(t => t.id)),elapsed=relayElapsed(now);
+ for (const piece of $('relay-track').children) {
+  const t=r.tasks.find(t => t.id === piece.dataset.id);if (!t) continue;
+  const ratio=r.status === 'done' || done.has(t.id) ? 1 : t.id === r.currentId ? Math.min(1,elapsed/t.duration) : 0;
+  piece.querySelector('.relay-fill').style.width=(ratio*100)+'%';
+ }
+}
+
+
 function renderControls() {
- const stopwatch=state.mode === 'stopwatch', t=stopwatch ? state.stopwatch : state.timers[state.mode];
- const locked=t.status !== 'idle', deadlineLocked=state.timers.deadline.status !== 'idle';
- $('duration-panel').hidden=state.mode !== 'duration';$('deadline-panel').hidden=state.mode !== 'deadline';
+ const relay=state.mode === 'relay',t=relay ? state.relay : state.timers[state.mode];
+ const deadlineLocked=state.timers.deadline.status !== 'idle';
+ $('duration-panel').hidden=state.mode !== 'duration';$('deadline-panel').hidden=state.mode !== 'deadline';$('relay-panel').hidden=!relay;
+ $('relay-track').hidden=!relay;$('relay-current').hidden=!relay;
  for (const id of ['hours','minutes','seconds']) $(id).disabled=state.timers.duration.status !== 'idle';
  $('picker-columns').style.pointerEvents=deadlineLocked ? 'none' : 'auto';$('picker-columns').style.opacity=deadlineLocked ? '.6' : '1';
  for (const control of [dateWheelCtrl,hourWheelCtrl,minWheelCtrl]) control?.setDisabled(deadlineLocked);
  $('return-today').disabled=deadlineLocked;
- let label=t.status === 'running' ? '暂停' : t.status === 'paused' ? '继续' : ['overtime','past'].includes(t.status) ? '完成' : '开始';
+ const label=t.status === 'running' ? '暂停' : t.status === 'paused' ? '继续' : ['overtime','past'].includes(t.status) ? '完成' : '开始';
  const path=t.status === 'running' ? pausePath : ['overtime','past'].includes(t.status) ? completePath : playPath;
  $('timer-start').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'+path+'</svg>';
- $('timer-start').setAttribute('aria-label',label);$('timer-start').title=label;
- $('timer-reset').disabled=stopwatch && (t.status === 'running' || (t.status === 'idle' && !t.laps.length));
- $('timer-lap').hidden=!stopwatch;$('timer-lap').disabled=!stopwatch || t.status !== 'running';
+ $('timer-start').setAttribute('aria-label',label);$('timer-start').title=label;$('timer-start').disabled=relay && !state.relay.tasks.length;
+ $('timer-reset').disabled=relay && (t.status === 'idle' || !t.tasks.length);
  $('timer-error').textContent=errors[state.mode];
- $('lap-records').hidden=!stopwatch || !state.stopwatch.laps.length;
  $('interval-value').disabled=state.reminder.running;$('interval-unit').disabled=state.reminder.running;
  const reminderLabel=state.reminder.running ? '停止提醒' : '启动提醒';
  $('reminder-toggle').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'+(state.reminder.running ? '<rect x="7" y="7" width="10" height="10" rx="1"/>' : playPath)+'</svg>';
  $('reminder-toggle').setAttribute('aria-label',reminderLabel);$('reminder-toggle').title=reminderLabel;
  $('reminder-toggle').setAttribute('aria-pressed',String(state.reminder.running));$('reminder-readout').hidden=!state.reminder.running;
  const wrap=$('timer-time-wrap');
- wrap.style.cursor=stopwatch ? 'default' : 'pointer';wrap.tabIndex=stopwatch ? -1 : 0;
- if (stopwatch) {wrap.removeAttribute('role');wrap.removeAttribute('aria-label');wrap.removeAttribute('title');}
+ wrap.style.cursor=relay ? 'default' : 'pointer';wrap.tabIndex=relay ? -1 : 0;
+ if (relay) {wrap.removeAttribute('role');wrap.removeAttribute('aria-label');wrap.removeAttribute('title');}
  else {wrap.setAttribute('role','button');wrap.setAttribute('aria-label','切换'+modeNames[state.mode]+'时间显示方式');wrap.title='点击切换精确时间';}
- renderTabs();syncStopwatchAnimation();
+ renderTabs();
 }
+
 for (const mode of MODES) $('mode-'+mode).onclick=() => {
- state.mode=mode;renderControls();save();tick();
+ finishRelayDrag(false);state.mode=mode;renderRelay();renderControls();save();tick();
  if (mode === 'deadline') {dateWheelCtrl.syncValue();hourWheelCtrl.syncValue();minWheelCtrl.syncValue();}
 };
 function updateRunningTimers(now) {
@@ -857,6 +1151,7 @@ function updateRunningTimers(now) {
    if (!t.notified) {t.notified=true;notify(modeNames[mode]+'倒计时结束，继续计时');}
   }
  }
+ if (settleRelay(now)) {changed=true;renderRelay(true);}
  const r=state.reminder;
  if (r.running && now >= r.next) {
   r.last=now;r.next+=(Math.floor((now-r.next)/r.interval)+1)*r.interval;notify('间隔提醒 · '+clockText(new Date(now)));changed=true;
@@ -897,18 +1192,24 @@ function formatSpan(ms,past=false) {
  return prefix+(hours ? unit(hours,'h') : '')+(remainder || !hours ? unit(remainder,'min') : '');
 }
 function toggleTimeFormat() {
- if (state.mode === 'stopwatch') return;
+ if (state.mode === 'relay') return;
  const key=state.mode === 'deadline' ? 'deadlineCompactMode' : 'durationCompactMode';
  state[key]=!state[key];save();tick();
 }
 $('timer-time-wrap').onclick=toggleTimeFormat;
 $('timer-time-wrap').addEventListener('keydown',event => {if (event.key === 'Enter' || event.key === ' ') {event.preventDefault();toggleTimeFormat();}});
+
 $('timer-start').onclick=() => {
  void unlockAudio();const now=Date.now();updateRunningTimers(now);
- if (state.mode === 'stopwatch') {
-  const s=state.stopwatch;
-  if (s.status === 'running') {s.elapsed=stopwatchElapsed(now);s.startedAt=0;s.status='paused';}
-  else {s.startedAt=now;s.status='running';}
+ if (state.mode === 'relay') {
+  const r=state.relay;
+  if (r.status === 'running') {r.elapsed=relayElapsed(now);r.startedAt=0;r.status='paused';}
+  else {
+   for (const row of $('relay-tasks').children) if (!commitRelayDuration(row,row.dataset.id)) {showError('timer','请先修正任务时长');return;}
+   if (r.status === 'paused') {r.startedAt=now;r.status='running';}
+   else beginRelay(now);
+  }
+  renderRelay();
  } else {
   const mode=state.mode,t=state.timers[mode];
   if (t.status === 'running') {t.remaining=Math.max(0,t.end-now);t.status='paused';}
@@ -924,18 +1225,82 @@ $('timer-start').onclick=() => {
  showError('timer');renderControls();save();tick();
 };
 $('timer-reset').onclick=() => {
- if (state.mode === 'stopwatch') {
-  if (state.stopwatch.status === 'running') return;
-  state.stopwatch={status:'idle',elapsed:0,startedAt:0,laps:[]};renderLaps();
- } else state.timers[state.mode]=idleTimer(state.mode);
+ if (state.mode === 'relay') {finishRelayDrag(false);resetRelay();renderRelay();}
+ else state.timers[state.mode]=idleTimer(state.mode);
  showError('timer');renderControls();save();tick();
 };
-$('timer-lap').onclick=() => {
- const s=state.stopwatch;if (s.status !== 'running') return;
- const elapsed=stopwatchElapsed(),previous=s.laps.length ? s.laps[s.laps.length-1].elapsed : 0;
- if (elapsed <= previous) return;
- s.laps.push({elapsed,split:elapsed-previous});renderLaps();save();
+
+
+function finishRelayDrag(cancel=false) {
+ const drag=relayDrag;if (!drag) return;
+ relayDrag=null;
+ const track=$('relay-track');
+ if (track.hasPointerCapture(drag.pointerId)) track.releasePointerCapture(drag.pointerId);
+ drag.ghost?.remove();document.body.classList.remove('relay-dragging');
+ for (const piece of track.children) piece.classList.remove('drag-slot');
+ if (cancel && drag.active) {
+  const r=state.relay,byId=new Map(r.tasks.map(t => [t.id,t]));
+  r.tasks=drag.original.map(id => byId.get(id)).filter(Boolean).concat(r.tasks.filter(t => !drag.original.includes(t.id)));
+  normalizeRelayOrder();
+ }
+ if (drag.active) {
+  renderRelay(true);save();
+  setText('relay-announcement',cancel ? '已取消排序' : '任务顺序已调整');
+ }
+}
+$('relay-track').addEventListener('pointerdown',event => {
+ if (event.button !== 0 || relayDrag) return;
+ const piece=event.target.closest('.relay-piece');
+ if (!piece || !relayCanMove(piece.dataset.id)) return;
+ event.preventDefault();piece.focus({preventScroll:true});
+ const rect=piece.getBoundingClientRect(),movable=[...$('relay-track').children].filter(node => relayCanMove(node.dataset.id));
+ relayDrag={id:piece.dataset.id,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,offsetX:event.clientX-rect.left,offsetY:event.clientY-rect.top,width:rect.width,height:rect.height,active:false,ghost:null,original:state.relay.tasks.map(t => t.id),centers:movable.map(node => {const rect=node.getBoundingClientRect();return rect.left+rect.width/2;})};
+ $('relay-track').setPointerCapture(event.pointerId);
+});
+$('relay-track').addEventListener('pointermove',event => {
+ const drag=relayDrag;if (!drag || event.pointerId !== drag.pointerId) return;
+ if (!drag.active && Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY)<5) return;
+ event.preventDefault();
+ if (!drag.active) {
+  const piece=[...$('relay-track').children].find(node => node.dataset.id === drag.id);
+  if (!piece || !relayCanMove(drag.id)) {finishRelayDrag(false);return;}
+  drag.active=true;drag.ghost=piece.cloneNode(true);drag.ghost.classList.add('relay-drag-ghost');drag.ghost.setAttribute('aria-hidden','true');drag.ghost.tabIndex=-1;
+  drag.ghost.style.width=drag.width+'px';drag.ghost.style.height=drag.height+'px';document.body.append(drag.ghost);
+  piece.classList.add('drag-slot');document.body.classList.add('relay-dragging');
+ }
+ drag.ghost.style.left=(event.clientX-drag.offsetX)+'px';drag.ghost.style.top=(event.clientY-drag.offsetY)+'px';
+ const center=event.clientX-drag.offsetX+drag.width/2;
+ let target=0;
+ while (target<drag.centers.length-1 && center>(drag.centers[target]+drag.centers[target+1])/2) target++;
+ const ids=state.relay.tasks.filter(t => relayCanMove(t.id)).map(t => t.id),index=ids.indexOf(drag.id);
+ if (index<0) {finishRelayDrag(false);return;}
+ if (target !== index) {ids.splice(target,0,ids.splice(index,1)[0]);relayApplyOrder(ids);}
+});
+$('relay-track').addEventListener('pointerup',event => {if (relayDrag?.pointerId === event.pointerId) finishRelayDrag(false);});
+$('relay-track').addEventListener('pointercancel',() => finishRelayDrag(true));
+$('relay-track').addEventListener('lostpointercapture',() => {if (relayDrag) finishRelayDrag(true);});
+$('relay-track').addEventListener('keydown',event => {
+ const piece=event.target.closest('.relay-piece');
+ if (!piece || !['ArrowLeft','ArrowRight'].includes(event.key)) return;
+ event.preventDefault();moveRelayTask(piece.dataset.id,event.key === 'ArrowLeft' ? -1 : 1);
+});
+document.addEventListener('keydown',event => {if (event.key === 'Escape' && relayDrag) {event.preventDefault();finishRelayDrag(true);}});
+window.addEventListener('resize',() => finishRelayDrag(true));
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',event => {
+ if (event.matches) for (const node of document.querySelectorAll('#relay-track > *,#relay-tasks > *')) for (const animation of node.getAnimations()) animation.cancel();
+});
+$('relay-add').onclick=() => {
+ const now=Date.now();updateRunningTimers(now);const r=state.relay;
+ if (r.status === 'done') resetRelay();
+ const id='task-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+ const used=new Set(r.tasks.map(t => t.color)),color=relayPalette.find(color => !used.has(color)) || relayPalette[r.tasks.length%relayPalette.length];
+ r.tasks.push(newTask(id,'任务'+(r.tasks.length+1),300000,color));
+ renderRelay(true);renderControls();save();tick();
+ const row=[...$('relay-tasks').children].find(node => node.dataset.id === id);row?.querySelector('.relay-name').focus();
 };
+$('relay-pause-between').onclick=() => {updateRunningTimers(Date.now());state.relay.pauseBetween=!state.relay.pauseBetween;renderRelay();save();};
+$('relay-loop').onclick=() => {updateRunningTimers(Date.now());state.relay.loop=!state.relay.loop;renderRelay();save();};
+
 $('reminder-toggle').onclick=() => {
  void unlockAudio();const r=state.reminder;
  if (r.running) {r.running=false;r.next=0;}
@@ -961,17 +1326,23 @@ $('interval-value').addEventListener('input',() => {state.settings.interval=$('i
 $('interval-unit').addEventListener('change',() => {state.settings.unit=$('interval-unit').value;showError('reminder');queueSave();tick();});
 document.querySelectorAll('input[type=number]').forEach(input => input.addEventListener('wheel',event => {if (document.activeElement === input) event.preventDefault();},{passive:false}));
 
+
 function tick() {
  const now=Date.now(),date=new Date(now);ensureCalendar(date);updateRunningTimers(now);
  setText('clock',clockText(date,state.clockShowSeconds));
  $('clock').setAttribute('aria-label','当前时间 '+clockText(date,state.clockShowSeconds)+'，点击切换秒数');
  setText('clock-date',(date.getMonth()+1)+'月'+date.getDate()+'日 · '+['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][date.getDay()]);
- const stopwatch=state.mode === 'stopwatch',t=stopwatch ? state.stopwatch : state.timers[state.mode],section=document.querySelector('.timer');
+ const relay=state.mode === 'relay',t=relay ? state.relay : state.timers[state.mode],section=document.querySelector('.timer');
  const status=t.status === 'paused' ? '已暂停' : '';
  let ratio=0,end='',readout='',plain='',past=false,remaining=0;
- for (const [name,value] of [['is-running',t.status === 'running'],['is-paused',t.status === 'paused'],['is-overtime',!stopwatch && t.status === 'overtime'],['is-past',!stopwatch && t.status === 'past'],['is-stopwatch',stopwatch]]) section.classList.toggle(name,value);
- if (stopwatch) {
-  renderStopwatchReadout(now);plain=formatStopwatch(stopwatchElapsed(now));
+ for (const [name,value] of [['is-running',t.status === 'running'],['is-paused',t.status === 'paused'],['is-overtime',!relay && t.status === 'overtime'],['is-past',!relay && t.status === 'past'],['is-relay',relay]]) section.classList.toggle(name,value);
+ if (relay) {
+  remaining=relayRemaining(now);plain=formatDigital(remaining);setText('timer-readout',plain);
+  $('timer-readout').classList.toggle('long',plain.length>8);
+  $('timer-readout').setAttribute('aria-label','当前任务剩余 '+plain);
+  const current=relayCurrent() || (t.status === 'idle' ? t.tasks[0] : null);
+  setText('relay-current',current?.name || '');
+  renderRelayProgress(now);
  } else {
   if (t.status === 'running') {remaining=Math.max(0,t.end-now);ratio=remaining/t.total*100;end='结束于 '+endText(t.end);}
   else if (t.status === 'paused') {remaining=t.remaining;ratio=t.total ? remaining/t.total*100 : 0;}
@@ -986,12 +1357,12 @@ function tick() {
   $('timer-readout').classList.toggle('long',plain.length>8);
   $('timer-readout').setAttribute('aria-label',(past ? '已过去时间 ' : '剩余时间 ')+plain);
  }
- $('timer-readout').classList.toggle('past-mode',!stopwatch && past);
- $('timer-readout').classList.toggle('overtime-mode',!stopwatch && t.status === 'overtime');
+ $('timer-readout').classList.toggle('past-mode',!relay && past);
+ $('timer-readout').classList.toggle('overtime-mode',!relay && t.status === 'overtime');
  setText('timer-status',status);setText('timer-end',end);
- $('timer-progress').hidden=stopwatch;
+ $('timer-progress').hidden=relay;
  ratio=Math.max(0,Math.min(100,ratio));$('progress-fill').style.width=ratio+'%';$('timer-progress').setAttribute('aria-valuenow',String(Math.round(ratio)));
- $('wave-front').style.display=!stopwatch && ['running','paused'].includes(t.status) && ratio>0 ? 'block' : 'none';
+ $('wave-front').style.display=!relay && ['running','paused'].includes(t.status) && ratio>0 ? 'block' : 'none';
  if (state.reminder.running) setText('reminder-readout',formatDigital(Math.max(0,state.reminder.next-now)));
  renderTabs();
  let title='计时器';
@@ -999,16 +1370,15 @@ function tick() {
  else {
   const background=['duration','deadline'].find(mode => state.timers[mode].status === 'running');
   if (background) title=formatDigital(Math.max(0,state.timers[background].end-now))+' · '+modeNames[background];
-  else if (state.stopwatch.status === 'running') title=formatStopwatch(stopwatchElapsed(now))+' · 段计时';
+  else if (state.relay.status === 'running') title=formatDigital(relayRemaining(now))+' · 任务接力';
   else if (state.reminder.running) title=formatDigital(Math.max(0,state.reminder.next-now))+' · 提醒';
  }
  if (document.title !== title) document.title=title;
- syncStopwatchAnimation();
 }
-initPickers();renderSound();renderLaps();renderControls();tick();
+initPickers();renderSound();renderRelay();renderControls();tick();
 if (state.mode === 'deadline') {dateWheelCtrl.syncValue();hourWheelCtrl.syncValue();minWheelCtrl.syncValue();}
 save();setInterval(tick,250);
-document.addEventListener('visibilitychange',() => {syncStopwatchAnimation();if (!document.hidden) tick();});
+document.addEventListener('visibilitychange',() => {if (!document.hidden) tick();});
 window.addEventListener('pageshow',tick);
 })();
 
