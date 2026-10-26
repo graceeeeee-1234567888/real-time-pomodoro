@@ -952,13 +952,7 @@ function normalizeRelayOrder() {
 function relayCanMove(id) {
  const r=state.relay,completed=r.completed.some(c => c.id === id);
  if (!['running','paused'].includes(r.status)) return true;
- return !completed && (id !== r.currentId || Boolean(relayDrag?.active));
-}
-function relayCanStartDrag(id,fromList=false) {
- const r=state.relay;
- if (!['running','paused'].includes(r.status)) return true;
- if (r.completed.some(c => c.id === id)) return false;
- return !fromList || id !== r.currentId;
+ return !completed;
 }
 function resetRelay() {
  const r=state.relay;
@@ -993,11 +987,12 @@ function settleRelay(now,force=false) {
    }
   }
   r.currentId=next.id;
-  r.elapsed=r.pausedElapsed[next.id] || 0;delete r.pausedElapsed[next.id];
+  const resumedElapsed=r.pausedElapsed[next.id] || 0;
+  r.elapsed=resumedElapsed;delete r.pausedElapsed[next.id];
   if (r.pauseBetween || wasPaused) {
    r.status='paused';r.startedAt=0;break;
   }
-  t=next;r.elapsed+=elapsed;r.startedAt=now;
+  t=next;elapsed+=resumedElapsed;r.elapsed=elapsed;r.startedAt=now;
  }
  normalizeRelayOrder();
  const next=relayCurrent();
@@ -1039,16 +1034,28 @@ function relayAnimateOrder(container,order,animate=true) {
 }
 function relayApplyOrder(ids,announce=false) {
  const r=state.relay,byId=new Map(r.tasks.map(t => [t.id,t])),active=['running','paused'].includes(r.status);
- const fixed=active ? r.tasks.filter(t => r.completed.some(c => c.id === t.id) || (!relayDrag?.active && t.id === r.currentId)) : [];
+ const fixed=active ? r.tasks.filter(t => r.completed.some(c => c.id === t.id)) : [];
  r.tasks=fixed.concat(ids.map(id => byId.get(id)).filter(Boolean));
  normalizeRelayOrder();
  renderRelay(true);save();
  if (announce) setText('relay-announcement','顺序已调整');
 }
+function relayContinueAfterReorder(currentId,elapsed,status,now) {
+ const r=state.relay,completed=new Set(r.completed.map(item => item.id));
+ const next=r.tasks.find(task => !completed.has(task.id));
+ if (next && next.id !== currentId) {
+  r.pausedElapsed[currentId]=elapsed;r.currentId=next.id;r.elapsed=r.pausedElapsed[next.id] || 0;delete r.pausedElapsed[next.id];
+ } else {r.currentId=currentId;r.elapsed=elapsed;}
+ r.status=status;r.startedAt=status === 'running' ? now : 0;
+}
 function moveRelayTask(id,delta,fromList=false) {
- const ids=state.relay.tasks.filter(t => relayCanMove(t.id)).map(t => t.id),index=ids.indexOf(id),target=index+delta;
+ const now=Date.now();updateRunningTimers(now);
+ const r=state.relay,ids=r.tasks.filter(t => relayCanMove(t.id)).map(t => t.id),index=ids.indexOf(id),target=index+delta;
  if (index<0 || target<0 || target>=ids.length) return;
+ const status=r.status,currentId=r.currentId,elapsed=relayElapsed(now);
+ if (status === 'running') {r.elapsed=elapsed;r.startedAt=0;r.status='paused';}
  ids.splice(target,0,ids.splice(index,1)[0]);relayApplyOrder(ids,true);
+ if (['running','paused'].includes(status)) {relayContinueAfterReorder(currentId,elapsed,status,now);renderRelay();renderControls();save();tick();}
  const targetNode=[...$(fromList ? 'relay-tasks' : 'relay-track').children].find(node => node.dataset.id === id);
  (fromList ? targetNode?.querySelector('.relay-drag-handle') : targetNode)?.focus({preventScroll:true});
 }
@@ -1121,7 +1128,7 @@ function makeRelayRow(task) {
  row.append(colorLabel,body,tools,error);return row;
 }
 function renderRelay(animate=false) {
- const r=state.relay,track=$('relay-track'),list=$('relay-tasks'),ids=r.tasks.map(t => t.id),done=new Map(r.completed.map(t => [t.id,t.duration]));
+ const r=state.relay,track=$('relay-track'),list=$('relay-tasks'),ids=r.tasks.map(t => t.id),done=new Map(r.completed.map(t => [t.id,t.duration])),canReorder=r.tasks.filter(t => relayCanMove(t.id)).length>1;
  for (const parent of [track,list]) for (const node of [...parent.children]) if (!ids.includes(node.dataset.id)) node.remove();
  for (const [sequenceIndex,task] of r.tasks.entries()) {
   let piece=[...track.children].find(node => node.dataset.id === task.id);
@@ -1136,18 +1143,17 @@ function renderRelay(animate=false) {
   let row=[...list.children].find(node => node.dataset.id === task.id);
   if (!row) {row=makeRelayRow(task);list.append(row);}
   for (const node of [piece,row]) {node.style.setProperty('--task-color',task.color);node.style.setProperty('--task-tint',relayTint(task.color));}
-  const current=r.currentId === task.id,complete=done.has(task.id) || r.status === 'done',fixed=!relayCanMove(task.id);
+  const current=r.currentId === task.id,complete=done.has(task.id) || r.status === 'done',fixed=!relayCanMove(task.id),draggable=!fixed && canReorder;
   const weight=done.get(task.id) || task.duration;
-  piece.style.flexGrow=String(weight);piece.dataset.fixed=String(fixed);piece.dataset.active=String(current && ['running','paused'].includes(r.status));piece.dataset.running=String(current && r.status === 'running');piece.setAttribute('aria-current',current ? 'step' : 'false');
+  piece.style.flexGrow=String(weight);piece.disabled=!draggable;piece.dataset.fixed=String(!draggable);piece.dataset.active=String(current && ['running','paused'].includes(r.status));piece.dataset.running=String(current && r.status === 'running');piece.setAttribute('aria-current',current ? 'step' : 'false');
   piece.querySelector('.relay-piece-name').textContent=task.name;
-  piece.setAttribute('aria-label',task.name+'，'+formatDigital(weight)+(fixed ? current ? '，当前任务' : '，已完成' : '，可拖动或按左右方向键排序'));
-  piece.title=task.name+' · '+formatDigital(weight)+(fixed ? current ? ' · 当前任务' : ' · 已完成' : ' · 拖动调整顺序');
+  piece.setAttribute('aria-label',task.name+'，'+formatDigital(weight)+(fixed ? '，已完成' : draggable ? '，可拖动或按左右方向键排序' : current ? '，当前任务' : ''));
+  piece.title=task.name+' · '+formatDigital(weight)+(fixed ? ' · 已完成' : draggable ? ' · 拖动调整顺序' : current ? ' · 当前任务' : '');
   row.dataset.current=String(current);row.dataset.complete=String(complete);row.setAttribute('role','group');row.setAttribute('aria-label','第 '+(sequenceIndex+1)+' 项，'+task.name);
   const marker=row.querySelector('.relay-color'),colorInput=marker.querySelector('input');
   marker.dataset.sequence=String(sequenceIndex+1);marker.style.setProperty('--sequence-size',sequenceIndex>=99 ? '10px' : sequenceIndex>=9 ? '12px' : '14px');
   colorInput.title='第 '+(sequenceIndex+1)+' 项颜色';colorInput.setAttribute('aria-label',colorInput.title);
-  const movable=r.tasks.filter(t => relayCanMove(t.id));
-  row.querySelector('[data-action=drag]').disabled=fixed || movable.length<2;
+  row.querySelector('[data-action=drag]').disabled=!draggable;
   row.querySelector('[data-action=restart]').disabled=!current;
   if (!row.contains(document.activeElement)) {
    row.querySelector('.relay-name').value=task.name;row.querySelector('input[type=color]').value=task.color;
@@ -1232,7 +1238,7 @@ function addMinutesToTimer(minutes) {
   if ([h,m,s].includes(null)) {showError('timer','请先修正无效时长。');return;}
   const seconds=Math.min(MAX_DURATION/1000,h*3600+m*60+s+minutes*60);
   const values={hours:Math.floor(seconds/3600),minutes:Math.floor(seconds/60)%60,seconds:seconds%60};
-  for (const [id,value] of Object.entries(values)) {$(id).value=String(value);state.settings[id]=String(value);}
+  for (const [id,value] of Object.entries(values)) {$(id).value=String(value);state.settings[id]=String(value);rejectedDurationInput[id]=false;}
  } else {
   const add=Math.min(minutes*60000,MAX_DURATION-t.total);
   if (add <= 0) {toast('已达到最大时长。');return;}
@@ -1320,15 +1326,8 @@ function finishRelayDrag(cancel=false) {
   renderRelay();renderControls();save();tick();return;
  }
  if (drag.active && ['running','paused'].includes(drag.status)) {
-  const completed=new Set(r.completed.map(item => item.id));
-  if (cancel) {r.currentId=drag.currentId;r.elapsed=drag.elapsed;}
-  else {
-   const next=r.tasks.find(task => !completed.has(task.id));
-   if (next && next.id !== drag.currentId) {
-    r.pausedElapsed[drag.currentId]=drag.elapsed;r.currentId=next.id;r.elapsed=r.pausedElapsed[next.id] || 0;delete r.pausedElapsed[next.id];
-   } else {r.currentId=drag.currentId;r.elapsed=drag.elapsed;}
-  }
-  r.status=drag.status;r.startedAt=drag.status === 'running' ? now : 0;
+  if (cancel) {r.currentId=drag.currentId;r.elapsed=drag.elapsed;r.status=drag.status;r.startedAt=drag.status === 'running' ? now : 0;}
+  else relayContinueAfterReorder(drag.currentId,drag.elapsed,drag.status,now);
  }
  if (cancel && drag.active) normalizeRelayOrder();
  if (drag.active) {
@@ -1360,10 +1359,10 @@ function setupRelayDrag(container,fromList=false) {
   if (event.button !== 0 || event.isPrimary === false || relayDrag) return;
   const handle=event.target.closest(fromList ? '.relay-drag-handle' : '.relay-piece');
   const item=fromList ? handle?.closest('.relay-task') : handle;
-  if (!item || !relayCanStartDrag(item.dataset.id,fromList) || handle.disabled) return;
+  if (!item || !relayCanMove(item.dataset.id) || handle.disabled) return;
   event.preventDefault();handle.focus({preventScroll:true});
-  const rect=item.getBoundingClientRect(),r=state.relay,sortableCurrent=['running','paused'].includes(r.status) && !r.completed.some(c => c.id === r.currentId);
-  const movable=[...container.children].filter(node => relayCanMove(node.dataset.id) || (sortableCurrent && node.dataset.id === r.currentId));
+  const rect=item.getBoundingClientRect(),r=state.relay;
+  const movable=[...container.children].filter(node => relayCanMove(node.dataset.id));
   relayDrag={id:item.dataset.id,container,fromList,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,offsetX:event.clientX-rect.left,offsetY:event.clientY-rect.top,left:rect.left,width:rect.width,height:rect.height,scrollY,active:false,ghost:null,frame:0,original:state.relay.tasks.map(t => t.id),status:r.status,currentId:r.currentId,elapsed:r.status === 'running' ? relayElapsed() : r.elapsed,prePaused:false,centers:movable.map(node => {const box=node.getBoundingClientRect();return fromList ? box.top+box.height/2 : box.left+box.width/2;})};
   container.setPointerCapture(event.pointerId);
   if (r.status === 'running') {relayDrag.prePaused=true;r.elapsed=relayDrag.elapsed;r.startedAt=0;r.status='paused';renderRelay();renderControls();save();tick();}
@@ -1375,7 +1374,7 @@ function setupRelayDrag(container,fromList=false) {
   event.preventDefault();
   if (!drag.active) {
    const item=[...container.children].find(node => node.dataset.id === drag.id);
-   if (!item || !relayCanStartDrag(drag.id,fromList)) {finishRelayDrag(false);return;}
+   if (!item || !relayCanMove(drag.id)) {finishRelayDrag(false);return;}
    const r=state.relay,now=Date.now();
    if (!drag.prePaused && ['running','paused'].includes(r.status)) {
     drag.status=r.status;drag.currentId=r.currentId;drag.elapsed=r.status === 'running' ? relayElapsed(now) : r.elapsed;
