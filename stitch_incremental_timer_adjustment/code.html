@@ -28,6 +28,7 @@
   --blue-fill:#38659c;
 }
 *{box-sizing:border-box}
+html{scrollbar-gutter:stable}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI","Microsoft YaHei",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 button,input,select{font:inherit;color:inherit}
 button{cursor:pointer;touch-action:manipulation}
@@ -62,6 +63,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:.06em}
 /* 主读数显示卡片与波浪进度槽 */
 .readout{position:relative;isolation:isolate;max-width:560px;min-height:210px;margin:28px auto 24px;padding:34px 16px;display:flex;flex-direction:column;justify-content:center;user-select:none}
 .readout .timer-time-wrap{position:relative;z-index:2}
+.relay-total-label{position:absolute;top:10px;left:16px;z-index:2;color:var(--muted);font-size:11px;line-height:1.2;letter-spacing:.04em;pointer-events:none}
 .timer-time-wrap{display:inline-flex;align-items:baseline;justify-content:center;margin:0 auto;cursor:pointer;flex-wrap:nowrap}
 .timer-time{font-size:clamp(56px,12.5vw,112px);line-height:1.08;font-weight:700;letter-spacing:-.055em;font-variant-numeric:tabular-nums;white-space:nowrap;transition:color .25s ease}
 .timer-time.long{font-size:clamp(34px,8vw,70px);letter-spacing:-.03em}
@@ -385,13 +387,18 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 .timer.is-relay .readout{border:1px solid var(--line);border-radius:6px;background:#f1f4ee}
 .timer.is-relay .settings{max-width:560px}
 .timer.is-relay .end-time{display:none}
-.relay-current{position:relative;z-index:2;max-width:100%;font-size:14px;color:var(--muted);margin-top:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .relay-track{display:flex;overflow:clip;gap:4px;width:100%;margin-top:22px;min-height:44px;position:relative;z-index:3;touch-action:pan-y}
 .relay-piece{position:relative;isolation:isolate;flex:1 1 0;min-width:0;height:44px;min-height:44px;padding:0 5px;border:0;border-radius:3px;overflow:hidden;background:var(--task-tint);color:var(--ink);cursor:grab;touch-action:none;transition:box-shadow .16s,opacity .16s}
 .relay-piece:hover:not(:disabled){background:var(--task-tint);box-shadow:inset 0 0 0 1px var(--task-color)}
 .relay-piece[data-fixed=true]{cursor:default}
-.relay-piece .relay-fill{position:absolute;inset:0 auto 0 0;background:var(--task-color);opacity:.7;width:0;z-index:-1;transition:width .24s linear}
-.relay-piece .relay-piece-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;pointer-events:none}
+.relay-piece .relay-fill{position:absolute;inset:0 auto 0 0;background:var(--task-color);opacity:.7;width:0;z-index:0;transition:width .24s linear}
+.relay-wave-front{display:none;position:absolute;top:0;right:-18px;width:36px;height:100%;pointer-events:none;overflow:hidden;opacity:.92;color:var(--task-color)}
+.relay-piece[data-active=true] .relay-wave-front{display:block}
+.relay-wave-layer{position:absolute;top:-100%;left:0;height:300%;background-color:var(--task-color);background-repeat:repeat-y;background-size:20px 40px;-webkit-mask-repeat:repeat-y;mask-repeat:repeat-y;-webkit-mask-size:20px 40px;mask-size:20px 40px}
+.relay-wave-1{width:24px;-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40'%3E%3Cpath d='M0 0 Q12 10 0 20 Q12 30 0 40 L20 40 L20 0Z' fill='white'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40'%3E%3Cpath d='M0 0 Q12 10 0 20 Q12 30 0 40 L20 40 L20 0Z' fill='white'/%3E%3C/svg%3E");opacity:.75;animation:wave-drift-vertical 2.4s linear infinite}
+.relay-wave-2{left:6px;width:20px;-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40'%3E%3Cpath d='M0 0 Q14 10 0 20 Q14 30 0 40 L20 40 L20 0Z' fill='white'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40'%3E%3Cpath d='M0 0 Q14 10 0 20 Q14 30 0 40 L20 40 L20 0Z' fill='white'/%3E%3C/svg%3E");opacity:.55;animation:wave-drift-vertical 3.6s cubic-bezier(.4,0,.6,1) infinite reverse}
+.relay-piece:not([data-running=true]) .relay-wave-layer{animation-play-state:paused}
+.relay-piece .relay-piece-name{position:relative;z-index:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;pointer-events:none}
 .relay-piece[aria-current=step]{box-shadow:inset 0 -2px var(--task-color)}
 .relay-piece.drag-slot{opacity:.25;outline:1px dashed var(--task-color);outline-offset:-1px}
 .relay-drag-ghost{position:fixed;z-index:1000;pointer-events:none;margin:0;opacity:.96;box-shadow:0 8px 22px #23392e26;cursor:grabbing;transform:scale(1.04);transition:none}
@@ -462,6 +469,7 @@ body.relay-dragging{cursor:grabbing;user-select:none}
 </div>
 <div class="readout">
 <p class="timer-status" id="timer-status" role="status"></p>
+<span class="relay-total-label" id="relay-total-label" hidden>共需</span>
 <div aria-label="剩余时间比例" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0" class="progress" id="timer-progress" role="progressbar">
 <div class="progress-fill" id="progress-fill" style="width: 0%;">
 <div class="wave-front" id="wave-front" style="display: none;">
@@ -473,7 +481,6 @@ body.relay-dragging{cursor:grabbing;user-select:none}
 <div class="timer-time-wrap" id="timer-time-wrap" title="点击切换秒数显示与跨度单位">
 <div aria-label="剩余时间" aria-live="off" class="timer-time" id="timer-readout" role="timer">25:00</div>
 </div>
-<p class="relay-current" id="relay-current" hidden></p>
 <div class="relay-track" id="relay-track" role="group" aria-label="任务接力进度，拖动或按左右方向键调整后续顺序" hidden></div>
 <span class="sr-only" id="relay-announcement" aria-live="polite"></span>
 </div>
@@ -587,7 +594,7 @@ const idleTimer = mode => ({status:'idle',mode,end:0,total:0,remaining:0,notifie
 const nextHour = new Date(Date.now()+3600000); nextHour.setMinutes(0,0,0);
 const relayPalette=['#72957d','#7897b5','#b89a6a','#a586ad','#bf8782','#78a5a3'];
 const newTask=(id,name,duration,color) => ({id,name,duration,color});
-function defaultRelay() {return {status:'idle',tasks:[newTask('task-1','任务1',1500000,relayPalette[0]),newTask('task-2','任务2',300000,relayPalette[1])],currentId:null,elapsed:0,startedAt:0,completed:[],pauseBetween:false,loop:false};}
+function defaultRelay() {return {status:'idle',tasks:[newTask('task-1','任务1',1500000,relayPalette[0]),newTask('task-2','任务2',300000,relayPalette[1])],currentId:null,elapsed:0,startedAt:0,completed:[],pausedElapsed:{},pauseBetween:false,loop:false};}
 const state = {
  sound:true, clockShowSeconds:true, durationCompactMode:false, deadlineCompactMode:true, mode:'duration',
  settings:{hours:'0',minutes:'25',seconds:'0',date:dateValue(nextHour),hour:pad(nextHour.getHours()),minute:pad(nextHour.getMinutes()),interval:'5',unit:'60000'},
@@ -901,6 +908,8 @@ function restoreRelay(source) {
    r.tasks.push(newTask(t.id,typeof t.name === 'string' ? t.name.trim().slice(0,80) || '任务' : '任务',t.duration,typeof t.color === 'string' && /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : relayPalette[r.tasks.length%relayPalette.length]));
   }
  }
+ r.pausedElapsed={};
+ if (isObject(source.pausedElapsed)) for (const [id,elapsed] of Object.entries(source.pausedElapsed)) {const task=r.tasks.find(t => t.id === id);if (task && numberIn(elapsed,0,task.duration)) r.pausedElapsed[id]=elapsed;}
  r.pauseBetween=source.pauseBetween === true;r.loop=source.loop === true;
  if (['idle','running','paused','done'].includes(source.status)) r.status=source.status;
  if (r.status !== 'idle' && Array.isArray(source.completed)) {
@@ -935,21 +944,22 @@ function normalizeRelayOrder() {
  const r=state.relay;
  if (!['running','paused'].includes(r.status)) return;
  const byId=new Map(r.tasks.map(t => [t.id,t])),used=new Set(),ordered=[];
- for (const id of [...r.completed.map(t => t.id),r.currentId]) if (byId.has(id) && !used.has(id)) {used.add(id);ordered.push(byId.get(id));}
+ for (const item of r.completed) if (byId.has(item.id) && !used.has(item.id)) {used.add(item.id);ordered.push(byId.get(item.id));}
  r.tasks=ordered.concat(r.tasks.filter(t => !used.has(t.id)));
 }
 function relayCanMove(id) {
- const r=state.relay;
- return !['running','paused'].includes(r.status) || (id !== r.currentId && !r.completed.some(c => c.id === id));
+ const r=state.relay,completed=r.completed.some(c => c.id === id);
+ if (!['running','paused'].includes(r.status)) return true;
+ return !completed && (id !== r.currentId || Boolean(relayDrag?.active));
 }
 function resetRelay() {
  const r=state.relay;
- r.status='idle';r.currentId=null;r.elapsed=0;r.startedAt=0;r.completed=[];
+ r.status='idle';r.currentId=null;r.elapsed=0;r.startedAt=0;r.completed=[];r.pausedElapsed={};
 }
 function beginRelay(now) {
  const r=state.relay;
  if (!r.tasks.length) return;
- r.status='running';r.currentId=r.tasks[0].id;r.elapsed=0;r.startedAt=now;r.completed=[];
+ r.status='running';r.currentId=r.tasks[0].id;r.elapsed=0;r.startedAt=now;r.completed=[];r.pausedElapsed={};
 }
 function settleRelay(now,force=false) {
  const r=state.relay;
@@ -960,13 +970,13 @@ function settleRelay(now,force=false) {
  if (relayDrag) finishRelayDrag(false);
  while (t && elapsed>=t.duration) {
   elapsed-=t.duration;count++;
-  r.completed.push({id:t.id,duration:t.duration});
+  r.completed.push({id:t.id,duration:t.duration});delete r.pausedElapsed[t.id];
   let next=relayPending()[0];
   if (!next && !r.loop) {
-   r.status='done';r.currentId=null;r.elapsed=0;r.startedAt=0;break;
+   r.status='done';r.currentId=null;r.elapsed=0;r.startedAt=0;r.pausedElapsed={};break;
   }
   if (!next) {
-   r.completed=[];next=r.tasks[0];
+   r.completed=[];r.pausedElapsed={};next=r.tasks[0];
    if (!next) {resetRelay();break;}
    if (!r.pauseBetween && !wasPaused) {
     const cycle=r.tasks.reduce((sum,item) => sum+item.duration,0);
@@ -975,10 +985,11 @@ function settleRelay(now,force=false) {
    }
   }
   r.currentId=next.id;
+  r.elapsed=r.pausedElapsed[next.id] || 0;delete r.pausedElapsed[next.id];
   if (r.pauseBetween || wasPaused) {
-   r.status='paused';r.elapsed=0;r.startedAt=0;break;
+   r.status='paused';r.startedAt=0;break;
   }
-  t=next;r.elapsed=elapsed;r.startedAt=now;
+  t=next;r.elapsed+=elapsed;r.startedAt=now;
  }
  normalizeRelayOrder();
  const next=relayCurrent();
@@ -1019,8 +1030,8 @@ function relayAnimateOrder(container,order,animate=true) {
  }
 }
 function relayApplyOrder(ids,announce=false) {
- const r=state.relay,byId=new Map(r.tasks.map(t => [t.id,t]));
- const fixed=r.tasks.filter(t => !relayCanMove(t.id));
+ const r=state.relay,byId=new Map(r.tasks.map(t => [t.id,t])),active=['running','paused'].includes(r.status);
+ const fixed=active ? r.tasks.filter(t => r.completed.some(c => c.id === t.id) || (!relayDrag?.active && t.id === r.currentId)) : [];
  r.tasks=fixed.concat(ids.map(id => byId.get(id)).filter(Boolean));
  normalizeRelayOrder();
  renderRelay(true);save();
@@ -1036,11 +1047,11 @@ function moveRelayTask(id,delta,fromList=false) {
 function removeRelayTask(id) {
  const now=Date.now();updateRunningTimers(now);
  const r=state.relay,wasCurrent=r.currentId === id,oldStatus=r.status;
- r.tasks=r.tasks.filter(t => t.id !== id);r.completed=r.completed.filter(t => t.id !== id);
+ r.tasks=r.tasks.filter(t => t.id !== id);r.completed=r.completed.filter(t => t.id !== id);delete r.pausedElapsed[id];
  if (!r.tasks.length) resetRelay();
  else if (wasCurrent) {
   const next=relayPending()[0];
-  r.currentId=next?.id || null;r.elapsed=0;r.startedAt=oldStatus === 'running' && next ? now : 0;
+  r.currentId=next?.id || null;r.elapsed=next ? r.pausedElapsed[next.id] || 0 : 0;if (next) delete r.pausedElapsed[next.id];r.startedAt=oldStatus === 'running' && next ? now : 0;
   r.status=next ? oldStatus : 'done';
  }
  normalizeRelayOrder();renderRelay(true);renderControls();save();tick();
@@ -1062,7 +1073,7 @@ function commitRelayDuration(row,id) {
  if (task.duration === duration) return true;
  const now=Date.now();updateRunningTimers(now);
  const r=state.relay,elapsed=relayElapsed(now);
- task.duration=duration;
+ task.duration=duration;if (Object.hasOwn(r.pausedElapsed,id)) r.pausedElapsed[id]=Math.min(r.pausedElapsed[id],duration);
  if (r.currentId === id) {r.elapsed=elapsed;r.startedAt=r.status === 'running' ? now : 0;settleRelay(now,true);}
  renderRelay();renderControls();save();tick();return true;
 }
@@ -1109,6 +1120,9 @@ function renderRelay(animate=false) {
   if (!piece) {
    piece=document.createElement('button');piece.type='button';piece.className='relay-piece';piece.dataset.id=task.id;
    const fill=document.createElement('span');fill.className='relay-fill';
+   const wave=document.createElement('span');wave.className='relay-wave-front';wave.setAttribute('aria-hidden','true');
+   const wave1=document.createElement('span');wave1.className='relay-wave-layer relay-wave-1';
+   const wave2=document.createElement('span');wave2.className='relay-wave-layer relay-wave-2';wave.append(wave1,wave2);fill.append(wave);
    const label=document.createElement('span');label.className='relay-piece-name';piece.append(fill,label);track.append(piece);
   }
   let row=[...list.children].find(node => node.dataset.id === task.id);
@@ -1116,7 +1130,7 @@ function renderRelay(animate=false) {
   for (const node of [piece,row]) {node.style.setProperty('--task-color',task.color);node.style.setProperty('--task-tint',relayTint(task.color));}
   const current=r.currentId === task.id,complete=done.has(task.id) || r.status === 'done',fixed=!relayCanMove(task.id);
   const weight=done.get(task.id) || task.duration;
-  piece.style.flexGrow=String(weight);piece.dataset.fixed=String(fixed);piece.setAttribute('aria-current',current ? 'step' : 'false');
+  piece.style.flexGrow=String(weight);piece.dataset.fixed=String(fixed);piece.dataset.active=String(current && ['running','paused'].includes(r.status));piece.dataset.running=String(current && r.status === 'running');piece.setAttribute('aria-current',current ? 'step' : 'false');
   piece.querySelector('.relay-piece-name').textContent=task.name;
   piece.setAttribute('aria-label',task.name+'，'+formatDigital(weight)+(fixed ? current ? '，当前任务' : '，已完成' : '，可拖动或按左右方向键排序'));
   piece.title=task.name+' · '+formatDigital(weight)+(fixed ? current ? ' · 当前任务' : ' · 已完成' : ' · 拖动调整顺序');
@@ -1144,7 +1158,7 @@ function renderRelayProgress(now=Date.now()) {
  const r=state.relay,done=new Set(r.completed.map(t => t.id)),elapsed=relayElapsed(now);
  for (const piece of $('relay-track').children) {
   const t=r.tasks.find(t => t.id === piece.dataset.id);if (!t) continue;
-  const ratio=r.status === 'done' || done.has(t.id) ? 1 : t.id === r.currentId ? Math.min(1,elapsed/t.duration) : 0;
+  const ratio=r.status === 'done' || done.has(t.id) ? 1 : t.id === r.currentId ? Math.min(1,elapsed/t.duration) : Math.min(1,(r.pausedElapsed[t.id] || 0)/t.duration);
   piece.querySelector('.relay-fill').style.width=(ratio*100)+'%';
  }
 }
@@ -1153,11 +1167,11 @@ function renderRelayProgress(now=Date.now()) {
 function renderControls() {
  const relay=state.mode === 'relay',t=relay ? state.relay : state.timers[state.mode];
  const deadlineLocked=state.timers.deadline.status !== 'idle',pickerLocked=deadlineLocked && !deadlineEditorOpen;
- $('deadline-picker').hidden=pickerLocked;$('deadline-tools').hidden=!deadlineLocked;
+ $('deadline-picker').hidden=pickerLocked;$('deadline-tools').hidden=!deadlineLocked;$('relay-total-label').hidden=!relay;
  $('deadline-more').setAttribute('aria-expanded',String(deadlineEditorOpen));
  const editorLabel=deadlineEditorOpen ? '收起目标时间' : '修改目标时间';$('deadline-more').title=editorLabel;$('deadline-more').setAttribute('aria-label',editorLabel);
  $('duration-panel').hidden=state.mode !== 'duration';$('deadline-panel').hidden=state.mode !== 'deadline';$('relay-panel').hidden=!relay;
- $('relay-track').hidden=!relay;$('relay-current').hidden=!relay;
+ $('relay-track').hidden=!relay;
  for (const id of ['hours','minutes','seconds']) $(id).disabled=state.timers.duration.status !== 'idle';
  $('picker-columns').style.pointerEvents=pickerLocked ? 'none' : 'auto';$('picker-columns').style.opacity='1';
  for (const control of [dateWheelCtrl,hourWheelCtrl,minWheelCtrl]) control?.setDisabled(pickerLocked);
@@ -1278,18 +1292,28 @@ $('timer-reset').onclick=() => {
 
 function finishRelayDrag(cancel=false) {
  const drag=relayDrag;if (!drag) return;
- relayDrag=null;
+ const r=state.relay,now=Date.now();relayDrag=null;
  if (drag.frame) cancelAnimationFrame(drag.frame);
  if (drag.container.hasPointerCapture(drag.pointerId)) drag.container.releasePointerCapture(drag.pointerId);
  drag.ghost?.remove();document.body.classList.remove('relay-dragging');
  for (const node of document.querySelectorAll('#relay-track > *,#relay-tasks > *')) node.classList.remove('drag-slot');
  if (cancel && drag.active) {
-  const r=state.relay,byId=new Map(r.tasks.map(t => [t.id,t]));
+  const byId=new Map(r.tasks.map(t => [t.id,t]));
   r.tasks=drag.original.map(id => byId.get(id)).filter(Boolean).concat(r.tasks.filter(t => !drag.original.includes(t.id)));
-  normalizeRelayOrder();
  }
+ if (drag.active && ['running','paused'].includes(drag.status)) {
+  if (cancel) {r.currentId=drag.currentId;r.elapsed=drag.elapsed;}
+  else {
+   const movedIndex=r.tasks.findIndex(t => t.id === drag.id),currentIndex=r.tasks.findIndex(t => t.id === drag.currentId);
+   if (drag.id !== drag.currentId && movedIndex>=0 && currentIndex>=0 && movedIndex<currentIndex) {
+    r.pausedElapsed[drag.currentId]=drag.elapsed;r.currentId=drag.id;r.elapsed=r.pausedElapsed[drag.id] || 0;delete r.pausedElapsed[drag.id];
+   } else {r.currentId=drag.currentId;r.elapsed=drag.elapsed;}
+  }
+  r.status=drag.status;r.startedAt=drag.status === 'running' ? now : 0;
+ }
+ if (cancel && drag.active) normalizeRelayOrder();
  if (drag.active) {
-  renderRelay(true);save();
+  renderRelay(true);renderControls();save();tick();
   setText('relay-announcement',cancel ? '已取消排序' : '任务顺序已调整');
  }
 }
@@ -1319,8 +1343,9 @@ function setupRelayDrag(container,fromList=false) {
   const item=fromList ? handle?.closest('.relay-task') : handle;
   if (!item || !relayCanMove(item.dataset.id) || handle.disabled) return;
   event.preventDefault();handle.focus({preventScroll:true});
-  const rect=item.getBoundingClientRect(),movable=[...container.children].filter(node => relayCanMove(node.dataset.id));
-  relayDrag={id:item.dataset.id,container,fromList,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,offsetX:event.clientX-rect.left,offsetY:event.clientY-rect.top,left:rect.left,width:rect.width,height:rect.height,scrollY,active:false,ghost:null,frame:0,original:state.relay.tasks.map(t => t.id),centers:movable.map(node => {const r=node.getBoundingClientRect();return fromList ? r.top+r.height/2 : r.left+r.width/2;})};
+  const rect=item.getBoundingClientRect(),r=state.relay,sortableCurrent=['running','paused'].includes(r.status) && !r.completed.some(c => c.id === r.currentId);
+  const movable=[...container.children].filter(node => relayCanMove(node.dataset.id) || (sortableCurrent && node.dataset.id === r.currentId));
+  relayDrag={id:item.dataset.id,container,fromList,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,offsetX:event.clientX-rect.left,offsetY:event.clientY-rect.top,left:rect.left,width:rect.width,height:rect.height,scrollY,active:false,ghost:null,frame:0,original:state.relay.tasks.map(t => t.id),status:r.status,currentId:r.currentId,elapsed:r.status === 'running' ? relayElapsed() : r.elapsed,centers:movable.map(node => {const box=node.getBoundingClientRect();return fromList ? box.top+box.height/2 : box.left+box.width/2;})};
   container.setPointerCapture(event.pointerId);
  });
  container.addEventListener('pointermove',event => {
@@ -1331,7 +1356,14 @@ function setupRelayDrag(container,fromList=false) {
   if (!drag.active) {
    const item=[...container.children].find(node => node.dataset.id === drag.id);
    if (!item || !relayCanMove(drag.id)) {finishRelayDrag(false);return;}
-   drag.active=true;drag.ghost=item.cloneNode(true);drag.ghost.classList.add('relay-drag-ghost');
+   const r=state.relay,now=Date.now();
+   if (['running','paused'].includes(r.status)) {
+    drag.status=r.status;drag.currentId=r.currentId;drag.elapsed=r.status === 'running' ? relayElapsed(now) : r.elapsed;
+    if (r.status === 'running') {const current=relayCurrent();if (current && drag.elapsed>=current.duration) {settleRelay(now);return;}r.elapsed=drag.elapsed;r.startedAt=0;r.status='paused';}
+   }
+   drag.active=true;
+   if (['running','paused'].includes(drag.status)) {renderRelay();renderControls();save();tick();}
+   drag.ghost=item.cloneNode(true);drag.ghost.classList.add('relay-drag-ghost');
    if (fromList) drag.ghost.classList.add('relay-row-drag-ghost');
    drag.ghost.setAttribute('aria-hidden','true');drag.ghost.inert=true;drag.ghost.tabIndex=-1;
    drag.ghost.removeAttribute('id');for (const node of drag.ghost.querySelectorAll('[id]')) node.removeAttribute('id');
@@ -1410,11 +1442,9 @@ function tick() {
  let ratio=0,end='',readout='',plain='',past=false,remaining=0;
  for (const [name,value] of [['is-running',t.status === 'running'],['is-paused',t.status === 'paused'],['is-overtime',!relay && t.status === 'overtime'],['is-past',!relay && t.status === 'past'],['is-relay',relay]]) section.classList.toggle(name,value);
  if (relay) {
-  remaining=relayRemaining(now);plain=formatDigital(remaining);setText('timer-readout',plain);
+  remaining=state.relay.tasks.reduce((sum,task) => sum+task.duration,0);plain=formatDigital(remaining);setText('timer-readout',plain);
   $('timer-readout').classList.toggle('long',plain.length>8);
-  $('timer-readout').setAttribute('aria-label','当前任务剩余 '+plain);
-  const current=relayCurrent() || (t.status === 'idle' ? t.tasks[0] : null);
-  setText('relay-current',current?.name || '');
+  $('timer-readout').setAttribute('aria-label','任务接力共需 '+plain);
   renderRelayProgress(now);
  } else {
   if (t.status === 'running') {remaining=Math.max(0,t.end-now);ratio=remaining/t.total*100;end='结束于 '+endText(t.end);}
