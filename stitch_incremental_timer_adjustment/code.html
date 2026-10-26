@@ -670,7 +670,7 @@ function intervalValue() {
 const errors = {duration:'',deadline:'',stopwatch:''};
 const rejectedDurationInput = {hours:false,minutes:false,seconds:false};
 function durationInputMessage() {
- if (rejectedDurationInput.minutes || rejectedDurationInput.seconds) return '分钟和秒请输入 0–59 的整数。';
+ if (rejectedDurationInput.minutes || rejectedDurationInput.seconds) return '限 0–59 整数';
  if (rejectedDurationInput.hours) return '小时请输入 0–999 的整数。';
  return '';
 }
