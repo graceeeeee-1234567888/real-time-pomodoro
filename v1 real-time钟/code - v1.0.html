@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width,initial-scale=1" name="viewport"/>
+<meta content="light" name="color-scheme"/>
+<title>计时器</title>
+<style>
+:root{
+  --bg:#f8f9f6;
+  --ink:#23392e;
+  --muted:#69766d;
+  --line:#dce2da;
+  --accent:#315a43;
+  --accent-light:#4a7a5f;
+  --soft:#e8eee6;
+  --soft-hover:#deebe0;
+  --error:#a53d32;
+  --wave-primary:#b4d0ad;
+  --wave-secondary:#c6dfbf;
+  --picker-item-h:36px;
+  /* 统一超时与已过去的清爽蓝色系 */
+  --blue-text:#244b7a;
+  --blue-unit:#7b91aa;
+  --blue-accent:#38659c;
+  --blue-soft-bg:#e9f0f8;
+  --blue-line:#b9cbe0;
+  --blue-fill:#38659c;
+}
+*{box-sizing:border-box}
+html{scrollbar-gutter:stable}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI","Microsoft YaHei",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+button:disabled{cursor:default;opacity:.45}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+button{display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:44px;border:1px solid transparent;background:transparent;border-radius:10px;padding:10px 16px;transition:background .15s,color .15s,transform .1s}
+button:hover:not(:disabled){background:var(--soft)}
+button svg{width:18px;height:18px;flex-shrink:0}
+input,select{min-width:0;min-height:40px;border:1px solid var(--line);background:transparent;border-radius:8px;padding:6px 10px}
+input:disabled,select:disabled{color:var(--muted)}
+input[aria-invalid=true]{border-color:var(--error)}
+input[type=number]{appearance:textfield;-moz-appearance:textfield;font-variant-numeric:tabular-nums}
+input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+[hidden]{display:none!important}
+h1,p{margin:0}
+.shell{width:min(100% - 48px,780px);margin:auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:36px 0 24px;border-bottom:1px solid var(--line)}
+h1{font-size:18px;font-weight:600;letter-spacing:.06em}
+.date{margin-top:4px;font-size:12px;color:var(--muted)}
+.header-right{display:flex;align-items:center;gap:18px}
+.clock{padding:0 4px;font-size:40px;font-weight:700;line-height:1.2;letter-spacing:-.025em;font-variant-numeric:tabular-nums;min-width:176px;border:none;background:none}
+.sound-tools{display:flex;align-items:center;gap:0}
+.icon-button{width:40px;height:40px;padding:8px;color:var(--muted);border-radius:8px}
+.icon-button[aria-pressed=true]{color:var(--accent)}
+.sound-test{font-size:12px;color:var(--muted);padding:6px 10px;min-width:40px}
+
+.timer{padding:40px 0 36px;text-align:center}
+.tabs{display:inline-flex;padding:3px;background:var(--soft);border-radius:12px;gap:4px}
+.tabs button{min-width:84px;min-height:34px;padding:5px 20px;border-radius:8px;color:var(--muted);font-weight:500;font-size:13px;border:none}
+.tabs button[aria-pressed=true]{background:var(--bg);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.04)}
+
+/* 主读数显示卡片与波浪进度槽 */
+.readout{position:relative;isolation:isolate;max-width:560px;min-height:210px;margin:28px auto 24px;padding:34px 16px;display:flex;flex-direction:column;justify-content:center;user-select:none}
+.readout .timer-time-wrap{position:relative;z-index:2}
+.relay-total-label{position:absolute;left:50%;bottom:calc(100% + 4px);transform:translateX(-50%);z-index:2;color:var(--muted);font-size:11px;line-height:1.2;letter-spacing:.04em;pointer-events:none}
+.timer-time-wrap{display:inline-flex;align-items:baseline;justify-content:center;margin:0 auto;cursor:pointer;flex-wrap:nowrap}
+.timer-time{font-size:clamp(56px,12.5vw,112px);line-height:1.08;font-weight:700;letter-spacing:-.055em;font-variant-numeric:tabular-nums;white-space:nowrap;transition:color .25s ease}
+.timer-time.long{font-size:clamp(34px,8vw,70px);letter-spacing:-.03em}
+.timer-time.relay-total-updated{animation:relay-total-update .26s cubic-bezier(.2,.8,.2,1)}
+@keyframes relay-total-update{0%{opacity:.42;transform:translateY(7px)}65%{opacity:1;transform:translateY(-1px)}100%{opacity:1;transform:translateY(0)}}
+
+/* 定点已过去与超时统一用干净深邃的蓝色系 */
+.timer-time.past-mode,
+.timer-time.overtime-mode{
+  color:var(--blue-text);
+}
+
+/* 跨度单位优雅展示：数字大粗体，单位微缩附着并具有自然呼吸感 */
+.timer-time .num{font-variant-numeric:tabular-nums;font-weight:700}
+.timer-time .unit{
+  font-size:0.36em;
+  font-weight:600;
+  color:var(--muted);
+  margin-left:3px;
+  margin-right:12px;
+  vertical-align:baseline;
+  letter-spacing:0.02em;
+}
+.timer-time.past-mode .unit,
+.timer-time.overtime-mode .unit{
+  color:var(--blue-unit);
+}
+.timer-time .unit:last-child{margin-right:0}
+.timer-time .prefix-plus{font-size:0.75em;margin-right:4px;vertical-align:baseline;font-weight:700}
+
+.timer-status{position:absolute;left:0;right:0;bottom:calc(100% + 3px);height:18px;line-height:18px;margin:0;z-index:2;color:var(--muted);font-size:12px;font-weight:500;letter-spacing:.02em;pointer-events:none;transition:opacity .2s,color .25s}
+.timer-status:empty,.end-time:empty{display:none}
+
+/* 进度条与流淌波浪前锋动效 */
+.progress{position:absolute;inset:0;z-index:0;border:1px solid var(--line);background:#f1f4ee;overflow:hidden;border-radius:6px;transition:background .3s,border-color .3s}
+.progress-fill{position:relative;width:100%;height:100%;background:linear-gradient(90deg,#cadbc4 0%,#dbe7d7 100%);transition:width .24s cubic-bezier(0.2,0,0.2,1),background-color .3s}
+.wave-front{position:absolute;top:0;right:-18px;width:36px;height:100%;pointer-events:none;overflow:hidden;opacity:.92;transition:opacity .3s}
+.wave-layer{position:absolute;top:-100%;left:0;width:100%;height:300%;background-repeat:repeat-y;background-size:20px 40px}
+.wave-1{
+  width:24px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40' preserveAspectRatio='none'%3E%3Cpath d='M0,0 Q12,10 0,20 Q12,30 0,40 L20,40 L20,0 Z' fill='%23bdd6b7' opacity='0.75'/%3E%3C/svg%3E");
+  animation:wave-drift-vertical 2.4s linear infinite;
+}
+.wave-2{
+  left:6px;
+  width:20px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40' preserveAspectRatio='none'%3E%3Cpath d='M0,0 Q14,10 0,20 Q14,30 0,40 L20,40 L20,0 Z' fill='%23a7c6a0' opacity='0.55'/%3E%3C/svg%3E");
+  animation:wave-drift-vertical 3.6s cubic-bezier(0.4,0,0.6,1) infinite reverse;
+}
+
+@keyframes wave-drift-vertical{
+  from{transform:translateY(0)}
+  to{transform:translateY(40px)}
+}
+
+/* 状态配色切换 */
+.timer.is-running .progress{background:#ecf2e9;border-color:#c8d7c4}
+.timer.is-running .progress-fill{background:linear-gradient(90deg,#b5cfb0,#c8e0c3);box-shadow:inset 0 0 20px rgba(49,90,67,.06)}
+.timer.is-running .wave-front{opacity:1}
+.timer.is-running .wave-1{animation-play-state:running}
+.timer.is-running .wave-2{animation-play-state:running}
+
+.timer.is-paused .progress{background:#f3f5f1;border-color:#dee2db}
+.timer.is-paused .progress-fill{background:#d8e2d4}
+.timer.is-paused .wave-1,.timer.is-paused .wave-2{animation-play-state:paused;opacity:.6}
+
+/* 定点已过去与超时状态：统一柔和蓝背景与细边框 */
+.timer.is-past .progress,
+.timer.is-overtime .progress{
+  background:var(--blue-soft-bg);
+  border-color:var(--blue-line);
+}
+.timer.is-past .progress-fill,
+.timer.is-overtime .progress-fill{
+  background:var(--blue-fill);
+}
+.timer.is-past .wave-front,
+.timer.is-overtime .wave-front{
+  display:none;
+}
+.timer.is-past .end-time,
+.timer.is-overtime .end-time,
+.timer.is-past .timer-status,
+.timer.is-overtime .timer-status{
+  color:var(--blue-accent);
+}
+
+.settings{max-width:440px;margin:auto}
+
+/* 时长输入 */
+.duration-grid{display:flex;flex-direction:column;gap:8px}
+.duration-fields{display:flex;justify-content:center;gap:10px}
+.segment{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;padding-right:10px;min-width:0;flex:1;background:rgba(255,255,255,.4)}
+.segment:focus-within{outline:2px solid var(--accent);outline-offset:2px;background:#fff}
+.segment:has(input[aria-invalid=true]),.segment[data-rejected=true]{border-color:var(--error)}
+.segment input{width:100%;text-align:center;font-size:17px;font-variant-numeric:tabular-nums;border:0;outline:none;min-height:38px;padding:4px 4px 4px 10px;background:transparent}
+.segment input:focus-visible{outline:none}
+.segment span{font-size:11px;color:var(--muted);font-weight:500}
+
+.duration-subrow{display:flex;gap:10px}
+.subrow-slot{flex:1;min-width:0}
+.presets{display:flex;justify-content:center;align-items:center;gap:5px;width:100%}
+.presets button{min-height:24px;height:24px;padding:0 8px;font-size:11px;font-weight:600;color:var(--muted);border-radius:12px;border:1px solid var(--line);background:var(--bg);box-shadow:0 1px 2px rgba(0,0,0,.02);transition:all .15s;line-height:1}
+.presets button:hover:not(:disabled){background:var(--soft);color:var(--accent);border-color:var(--accent);transform:translateY(-0.5px)}
+.presets button:active:not(:disabled){transform:scale(0.94)}
+
+/* iOS 原生拟物滚轮选择器 (Picker Drum / Wheel) */
+.ios-picker-wrapper{
+  position:relative;
+  background:#f4f6f2;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:6px 10px;
+  margin:0 auto;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.03), 0 1px 2px rgba(0,0,0,.02);
+}
+.ios-picker-columns{
+  position:relative;
+  display:flex;
+  height:144px; /* 4 * 36px */
+  overflow:hidden;
+  user-select:none;
+}
+/* 选中高亮透镜条条 (Lens Highlight) */
+.ios-picker-highlight{
+  position:absolute;
+  top:54px; /* 1.5 * 36px = 54px */
+  left:4px;
+  right:4px;
+  height:var(--picker-item-h);
+  background:rgba(255,255,255,.94);
+  border:1px solid rgba(49,90,67,.18);
+  border-radius:8px;
+  box-shadow:0 2px 8px rgba(35,57,46,.06), inset 0 0 0 1px rgba(255,255,255,.6);
+  pointer-events:none;
+  z-index:2;
+}
+/* 上下半透明拟物渐隐阴影罩 */
+.ios-picker-mask-top, .ios-picker-mask-bottom{
+  position:absolute;
+  left:0;right:0;
+  height:54px;
+  pointer-events:none;
+  z-index:3;
+}
+.ios-picker-mask-top{
+  top:0;
+  background:linear-gradient(180deg, #f4f6f2 15%, rgba(244,246,242,.75) 60%, rgba(244,246,242,0) 100%);
+  border-bottom:1px solid rgba(220,226,218,.4);
+}
+.ios-picker-mask-bottom{
+  bottom:0;
+  background:linear-gradient(0deg, #f4f6f2 15%, rgba(244,246,242,.75) 60%, rgba(244,246,242,0) 100%);
+  border-top:1px solid rgba(220,226,218,.4);
+}
+
+.picker-col{
+  flex:1;
+  position:relative;
+  height:100%;
+  overflow-y:auto;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+  scroll-behavior:smooth;
+  cursor:grab;
+}
+.picker-col::-webkit-scrollbar{display:none}
+.picker-col.is-dragging{cursor:grabbing;scroll-behavior:auto}
+.picker-col-date{flex:2.1}
+.picker-col-colon{
+  flex:0 0 14px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:18px;
+  font-weight:700;
+  color:var(--muted);
+  z-index:4;
+  margin-top:-2px;
+}
+.picker-content{
+  padding:54px 0;
+}
+.picker-item{
+  height:var(--picker-item-h);
+  line-height:var(--picker-item-h);
+  text-align:center;
+  font-size:15px;
+  font-weight:500;
+  color:#7e8b82;
+  transition:color .12s, transform .12s, opacity .12s;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  padding:0 4px;
+}
+.picker-item.is-selected{
+  color:var(--ink);
+  font-weight:700;
+  font-size:17px;
+  transform:scale(1.04);
+}
+
+/* 日期条目视觉严格对齐结构 */
+.date-line-item{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:100%;
+  font-variant-numeric:tabular-nums;
+}
+.date-box-month, .date-box-day{
+  display:inline-block;
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.date-box-month{
+  width:1.55ch; /* 容纳1-2位数字，右对齐且不补0 */
+}
+.date-box-day{
+  width:1.55ch; /* 容纳1-2位数字，右对齐且不补0 */
+}
+.date-unit-label{
+  display:inline-block;
+  margin:0 4px 0 1px;
+}
+.date-tag{
+  display:inline-block;
+  margin-left:8px;
+  font-size:12px;
+  color:#94a3b8; /* 浅色辅助字样 */
+  font-weight:normal;
+  width:32px;
+  text-align:left;
+  letter-spacing:0;
+}
+.picker-item.is-selected .date-tag{
+  color:#64748b;
+  font-weight:500;
+}
+
+.error{color:var(--error);font-size:12px;text-align:center;margin-top:10px}
+.error:empty{display:none}
+.actions{display:flex;justify-content:center;gap:12px;margin-top:22px}
+.actions button{width:54px;min-width:54px;height:54px;min-height:54px;border-radius:50%;padding:0;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+.actions button svg{width:22px;height:22px}
+.primary{background:var(--accent);color:#fff}
+.primary:hover:not(:disabled){background:#264836;color:#fff;transform:scale(1.02)}
+#timer-start[data-action=pause]{background:var(--soft);color:var(--accent);border-color:#a5b9ab;box-shadow:none}
+#timer-start[data-action=pause]:hover:not(:disabled){background:#dae6d9;color:#264836}
+.deadline-tools{display:flex;justify-content:center;margin-top:4px}
+.deadline-more{width:40px;height:40px;min-height:40px;padding:0;border:0;background:transparent;color:#8a958d;transition:color .18s}
+.deadline-more:hover:not(:disabled){color:var(--accent);background:transparent}
+.deadline-more[aria-expanded=true]{color:var(--accent)}
+.deadline-more[aria-expanded=true]:hover:not(:disabled){color:#172f22}
+.deadline-more svg{width:20px;height:20px}
+.secondary{border-color:var(--line);background:var(--bg);color:var(--muted)}
+.secondary:hover:not(:disabled){background:var(--soft);color:var(--ink)}
+.end-time{font-weight:600;margin-top:14px;color:var(--muted);font-size:12px;min-height:18px;font-variant-numeric:tabular-nums}
+.timer.is-paused:not(.is-relay) .end-time:empty{display:block}
+.reminder{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:22px 0}
+.reminder-row{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
+.reminder-fields{display:flex;align-items:center;gap:8px}
+.reminder-fields label,.reminder-fields .suffix{color:var(--muted);white-space:nowrap}
+.reminder-fields input{width:58px;text-align:center;padding:6px 4px}
+.reminder-fields select{width:76px;padding:6px 4px}
+.reminder-controls{display:flex;gap:8px;align-items:center}
+.reminder-countdown{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.reminder-toggle{width:40px;min-width:40px;height:40px;min-height:40px;flex-shrink:0;border:1px solid var(--line);border-radius:50%;padding:0}
+.reminder-toggle svg{width:18px;height:18px}
+.reminder-toggle[aria-pressed=true]{background:var(--soft);border-color:var(--soft);color:var(--accent)}
+footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
+.toasts{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);z-index:20;pointer-events:none;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--ink);color:white;border-radius:10px;padding:10px 18px;font-size:13px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,.15)}
+
+@media(max-width:560px){
+ .shell{width:calc(100% - 32px)}
+ .top{padding:24px 0 18px;gap:8px}
+ h1{font-size:16px}
+ .clock{font-size:32px;min-width:140px}
+ .sound-test{display:none}
+ .timer{padding:30px 0 26px}
+ .readout{min-height:175px;margin:22px auto 20px;padding:26px 10px}
+ .timer-time{font-size:clamp(54px,16vw,92px)}
+ .timer-time.long{font-size:clamp(28px,8.5vw,54px)}
+ .settings{max-width:360px}
+ .duration-fields,.duration-subrow{gap:8px}
+ .presets button{min-height:22px;height:22px;padding:0 6px;font-size:10px}
+ .reminder-row{gap:12px}
+ .reminder-controls{gap:8px}
+ .reminder-toggle{padding:0}
+}
+@media(prefers-reduced-motion:reduce){
+ *,*::before,*::after{animation:none!important;transition:none!important}
+}
+
+.tabs button{position:relative}
+.timer-time-wrap:focus-visible,.picker-col:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.deadline-layout{display:grid;grid-template-columns:36px minmax(0,1fr);gap:4px;align-items:center}
+.return-today{width:36px;height:36px;min-height:36px;padding:0;color:#87948a;background:transparent;border:0;border-radius:6px}
+.return-today svg{width:16px;height:16px}
+.return-today:hover:not(:disabled){color:var(--muted);background:var(--soft)}
+.return-today:disabled{opacity:.3}
+.ios-picker-wrapper{width:100%;min-width:0}
+.ios-picker-columns{z-index:3}
+.ios-picker-mask-top,.ios-picker-mask-bottom{z-index:4}
+.ios-picker-highlight{top:60px}
+.ios-picker-mask-top{top:6px}
+.ios-picker-mask-bottom{bottom:6px}
+.picker-col[aria-disabled=true]{cursor:default}
+@media(max-width:560px){
+.header-right{gap:4px}.clock{font-size:30px;min-width:136px}
+.tabs button{min-width:80px;padding:5px 14px}
+.ios-picker-wrapper{padding-left:6px;padding-right:6px}
+.picker-item{font-size:14px;padding:0 2px}.picker-item.is-selected{font-size:15px}
+.date-tag{width:24px;margin-left:4px;font-size:10px}.date-unit-label{margin-right:2px}.picker-col-colon{flex-basis:10px}
+}
+@media(max-width:360px){.clock{font-size:26px;min-width:120px}}
+
+
+/* 任务接力 */
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.timer.is-relay .readout{border:1px solid var(--line);border-radius:6px;background:#f1f4ee}
+.timer.is-relay .settings{max-width:560px}
+.timer.is-relay .end-time{display:none}
+.relay-track{display:flex;overflow:clip;gap:4px;width:100%;margin-top:22px;min-height:44px;position:relative;z-index:3;touch-action:pan-y}
+.relay-piece{position:relative;isolation:isolate;flex:1 1 0;min-width:0;height:44px;min-height:44px;padding:0 5px;border:0;border-radius:3px;overflow:hidden;background:var(--task-tint);color:var(--ink);cursor:grab;touch-action:none;transition:box-shadow .16s,opacity .16s}
+.relay-piece:hover:not(:disabled){background:var(--task-tint);box-shadow:inset 0 0 0 1px var(--task-color)}
+.relay-piece[data-fixed=true]{cursor:default}
+.relay-piece .relay-fill{position:absolute;inset:0 auto 0 0;background:var(--task-color);opacity:.7;width:0;z-index:0;transition:width .24s linear}
+.relay-wave-front{display:none;position:absolute;top:0;right:-18px;width:36px;height:100%;pointer-events:none;overflow:hidden;opacity:.92;color:var(--task-color)}
+.relay-piece[data-active=true] .relay-wave-front{display:block}
+.relay-wave-layer{position:absolute;top:-100%;left:0;height:300%;background-color:var(--task-color);background-repeat:repeat-y;background-size:20px 40px;-webkit-mask-repeat:repeat-y;mask-repeat:repeat-y;-webkit-mask-size:20px 40px;mask-size:20px 40px}
+.relay-wave-1{width:24px;-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40'%3E%3Cpath d='M0 0 Q12 10 0 20 Q12 30 0 40 L20 40 L20 0Z' fill='white'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40'%3E%3Cpath d='M0 0 Q12 10 0 20 Q12 30 0 40 L20 40 L20 0Z' fill='white'/%3E%3C/svg%3E");opacity:.75;animation:wave-drift-vertical 2.4s linear infinite}
+.relay-wave-2{left:6px;width:20px;-webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40'%3E%3Cpath d='M0 0 Q14 10 0 20 Q14 30 0 40 L20 40 L20 0Z' fill='white'/%3E%3C/svg%3E");mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 40'%3E%3Cpath d='M0 0 Q14 10 0 20 Q14 30 0 40 L20 40 L20 0Z' fill='white'/%3E%3C/svg%3E");opacity:.55;animation:wave-drift-vertical 3.6s cubic-bezier(.4,0,.6,1) infinite reverse}
+.relay-piece:not([data-running=true]) .relay-wave-layer{animation-play-state:paused}
+.relay-piece .relay-piece-name{position:relative;z-index:2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;pointer-events:none}
+.relay-piece[aria-current=step]{box-shadow:inset 0 -2px var(--task-color)}
+.relay-piece.drag-slot{opacity:.25;outline:1px dashed var(--task-color);outline-offset:-1px}
+.relay-drag-ghost{position:fixed;z-index:1000;pointer-events:none;margin:0;opacity:.96;box-shadow:0 8px 22px #23392e26;cursor:grabbing;transform:scale(1.04);transition:none}
+body.relay-dragging{cursor:grabbing;user-select:none}
+.relay-options{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:0 0 12px}
+#relay-loop svg{width:14px;height:14px}
+#relay-loop{color:#999;background:transparent;border:0;transition:color .18s}
+#relay-loop:hover:not(:disabled){color:#777;background:transparent}
+#relay-loop[aria-pressed=true]{color:#234f35}
+#relay-loop[aria-pressed=true]:hover:not(:disabled){color:#173d27;background:transparent}
+.relay-auto{display:flex;flex-direction:column;align-items:center}
+.relay-auto-label{font-size:9px;line-height:1.4;color:var(--muted);white-space:nowrap}
+.relay-switch{width:44px;height:44px;min-height:44px;padding:0;border:0;border-radius:8px;background:transparent}
+.relay-switch:hover:not(:disabled){background:transparent}
+.relay-switch-track{position:relative;display:block;width:32px;height:18px;border-radius:999px;background:var(--line);transition:background-color .18s ease}
+.relay-switch-track::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #23392e1a;transform:translateX(0);transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+.relay-switch[aria-checked=true] .relay-switch-track{background:var(--accent)}
+.relay-switch[aria-checked=true] .relay-switch-track::after{transform:translateX(14px)}
+.timer.is-relay .actions{margin-top:0;margin-bottom:26px}
+.relay-tasks{display:flex;flex-direction:column;gap:0}
+.relay-task{display:grid;grid-template-columns:24px minmax(0,1fr) 92px;gap:8px;align-items:center;padding:8px 4px;border:0;border-bottom:1px solid var(--line);border-radius:0;text-align:left;position:relative;transition:background-color .15s}
+.relay-task[data-selected=true],.relay-task[data-editing=true]{background:rgba(232,238,230,.35)}
+.relay-task-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;align-items:center;min-width:0}
+.relay-task[data-current=true]{border-bottom-color:var(--task-color)}
+.relay-task[data-complete=true] .relay-task-body,.relay-task[data-complete=true] .relay-task-tools{opacity:.65}
+.relay-color{position:relative;width:24px;height:36px;display:flex;align-items:center;justify-content:center}
+.relay-color::before{content:attr(data-sequence);font-size:var(--sequence-size,14px);font-weight:800;line-height:1;color:var(--task-color);-webkit-text-stroke:.3px currentColor;opacity:1;font-variant-numeric:tabular-nums;pointer-events:none}
+.relay-color input{position:absolute;inset:0;width:100%;height:100%;min-height:0;opacity:0;cursor:pointer;padding:0;border:0}
+.relay-color:focus-within{outline:2px solid var(--accent);border-radius:6px}
+.relay-name{width:100%;min-height:36px;border:0;border-radius:4px;padding:3px;font-size:14px;background:transparent;text-overflow:ellipsis}
+.relay-duration{min-width:0;height:36px;min-height:36px;padding:3px 4px;justify-content:flex-end;align-content:center;flex-wrap:wrap;border:0;border-radius:4px;color:var(--muted);background:transparent;font-size:14px;line-height:1.1;font-weight:500;font-variant-numeric:tabular-nums;column-gap:4px;row-gap:1px;overflow:hidden}
+.relay-duration[aria-expanded=true]{color:var(--ink)}
+.relay-duration-part{display:inline-flex;align-items:baseline;white-space:nowrap}
+.relay-duration .unit{font-size:11px;font-weight:400;margin-left:2px}
+.relay-time-fields{grid-column:2 / -1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;gap:10px;min-width:0;padding:4px 0 6px}
+.relay-time-fields label{display:flex;align-items:center;gap:5px;min-width:0;color:var(--muted);font-size:11px}
+.relay-time-fields label span{flex-shrink:0}
+.relay-time-fields input{width:100%;min-width:0;min-height:36px;padding:4px;text-align:center;border:1px solid transparent;border-bottom-color:var(--line);border-radius:4px;font-size:14px;background:transparent;font-variant-numeric:tabular-nums}
+.relay-time-fields input:focus{border-color:var(--line);background:var(--bg)}
+.relay-time-fields input[aria-invalid=true]{border-color:var(--error)}
+.relay-task-tools{grid-column:3;grid-row:1;display:flex;align-items:center;gap:4px;margin-left:0;width:92px}
+.relay-task-tools button{width:28px;height:36px;min-height:36px;padding:6px;color:var(--muted);border-radius:5px}
+.relay-task-tools svg{width:14px;height:14px}
+.relay-row-actions{display:flex;width:56px;justify-content:flex-end;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .15s}
+.relay-task[data-selected=true] .relay-row-actions,.relay-task[data-editing=true] .relay-row-actions{opacity:1;visibility:visible;pointer-events:auto}
+.relay-task-tools .relay-drag-handle{width:32px;height:36px;min-height:36px;padding:8px;cursor:grab;touch-action:none}
+.relay-task-tools .relay-drag-handle:disabled{cursor:default}
+.relay-task.drag-slot{opacity:.25;outline:1px dashed var(--task-color);outline-offset:-1px}
+.relay-row-drag-ghost{background:var(--bg);transform:scale(1.015)}
+.relay-drag-ghost *{pointer-events:none!important}
+.relay-task-error{grid-column:2 / -1;color:var(--error);font-size:11px}
+.relay-task-error:empty{display:none}
+.relay-add{margin:12px auto 0}
+@media(max-width:560px){.timer.is-relay .actions{margin-bottom:22px}.relay-track{gap:3px}.relay-piece{padding:0 3px}.relay-piece .relay-piece-name{font-size:11px}.relay-task{padding:7px 2px;gap:6px;grid-template-columns:22px minmax(0,1fr) 92px}.relay-color{width:22px}.relay-task-body{gap:4px}.relay-name,.relay-duration{font-size:13px}.relay-time-fields{gap:8px}.relay-time-fields label{gap:4px;font-size:11px}}
+
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="top">
+<div><h1 class="">计时器</h1><p class="date" id="clock-date">10月26日 · 星期一</p></div>
+<div class="header-right">
+<button aria-label="当前时间，点击切换秒数" class="clock" id="clock" title="点击切换秒数显示">09:25</button>
+<div class="sound-tools">
+<button aria-label="关闭声音" aria-pressed="true" class="icon-button" id="sound" title="关闭声音"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.7" viewbox="0 0 24 24"><path d="M11 5 6 9H3v6h3l5 4z"></path><path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"></path></svg></button>
+<button class="sound-test" id="test-sound" title="试听提示音">试听</button>
+</div>
+</div>
+</header>
+<main>
+<section aria-label="计时器" class="timer">
+<div aria-label="计时方式" class="tabs" role="group">
+<button aria-pressed="true" class="" id="mode-duration">时长</button>
+<button aria-pressed="false" class="" id="mode-deadline">定点</button>
+<button aria-pressed="false" id="mode-relay">任务接力</button>
+</div>
+<div class="readout">
+<p class="timer-status" id="timer-status" role="status"></p>
+<div aria-label="剩余时间比例" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0" class="progress" id="timer-progress" role="progressbar">
+<div class="progress-fill" id="progress-fill" style="width: 0%;">
+<div class="wave-front" id="wave-front" style="display: none;">
+<div class="wave-layer wave-1"></div>
+<div class="wave-layer wave-2"></div>
+</div>
+</div>
+</div>
+<div class="timer-time-wrap" id="timer-time-wrap" title="点击切换秒数显示与跨度单位">
+<span class="relay-total-label" id="relay-total-label" hidden>共需</span>
+<div aria-label="剩余时间" aria-live="off" class="timer-time" id="timer-readout" role="timer">25:00</div>
+</div>
+<div class="relay-track" id="relay-track" role="group" aria-label="任务接力进度，拖动或按左右方向键调整后续顺序" hidden></div>
+<span class="sr-only" id="relay-announcement" aria-live="polite"></span>
+</div>
+<div id="relay-actions-slot" hidden></div>
+<div class="settings">
+<!-- 时长面板 -->
+<div id="duration-panel">
+<div class="duration-grid">
+<div class="duration-fields">
+<div class="segment"><input aria-describedby="timer-error" aria-invalid="false" aria-label="时长：小时" id="hours" inputmode="numeric" max="999" min="0" placeholder="0" step="1" type="text" pattern="[0-9]*" value="0"/><span aria-hidden="true" class="">时</span></div>
+<div class="segment"><input aria-describedby="timer-error" aria-invalid="false" aria-label="时长：分钟" id="minutes" inputmode="numeric" max="59" min="0" placeholder="0" step="1" type="text" pattern="[0-9]*" value="25"/><span aria-hidden="true" class="">分</span></div>
+<div class="segment"><input aria-describedby="timer-error" aria-invalid="false" aria-label="时长：秒" id="seconds" inputmode="numeric" max="59" min="0" placeholder="0" step="1" type="text" pattern="[0-9]*" value="0"/><span aria-hidden="true" class="">秒</span></div>
+</div>
+<div class="duration-subrow">
+<div class="subrow-slot"></div>
+<div class="subrow-slot">
+<div aria-label="增加时长" class="presets" role="group">
+<button class="" data-add-minutes="5" id="btn-add-5" title="增加 5 分钟">+5</button>
+<button class="" data-add-minutes="10" id="btn-add-10" title="增加 10 分钟">+10</button>
+<button class="" data-add-minutes="20" id="btn-add-20" title="增加 20 分钟">+20</button>
+</div>
+</div>
+<div class="subrow-slot"></div>
+</div>
+</div>
+</div>
+<!-- 定点面板：iOS 原生拟物滚轮选择器 -->
+<div hidden="" id="deadline-panel">
+<div class="deadline-layout" id="deadline-picker">
+<button class="return-today" id="return-today" aria-label="回到今天" title="回到今天"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v4m8-4v4M5 10h14M7 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6M14 15l-3 3 3 3m-3-3h6a4 4 0 0 0 4-4"/></svg></button>
+<div class="ios-picker-wrapper">
+<div class="ios-picker-highlight"></div>
+<div class="ios-picker-mask-top"></div>
+<div class="ios-picker-mask-bottom"></div>
+<div class="ios-picker-columns" id="picker-columns" style="pointer-events: auto; opacity: 1;">
+<!-- 日期滚轮 -->
+<div class="picker-col picker-col-date" data-wheel="date" id="picker-col-date">
+<div class="picker-content" id="picker-content-date"></div>
+</div>
+<!-- 小时滚轮 -->
+<div class="picker-col" data-wheel="hour" id="picker-col-hour">
+<div class="picker-content" id="picker-content-hour"></div>
+</div>
+<div class="picker-col-colon">:</div>
+<!-- 分钟滚轮 -->
+<div class="picker-col" data-wheel="minute" id="picker-col-minute">
+<div class="picker-content" id="picker-content-minute"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="deadline-tools" id="deadline-tools" hidden><button class="deadline-more" id="deadline-more" type="button" aria-label="修改目标时间" title="修改目标时间" aria-expanded="false" aria-controls="deadline-picker"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div>
+</div>
+<div id="relay-panel" hidden>
+<div class="relay-options"><div class="relay-auto"><span class="relay-auto-label" id="relay-auto-label">自动下一项</span><button class="relay-switch" id="relay-pause-between" type="button" role="switch" aria-checked="true" aria-labelledby="relay-auto-label" title="到点提醒并自动开始下一项"><span class="relay-switch-track" aria-hidden="true"></span></button></div><button class="icon-button" id="relay-loop" aria-pressed="false" aria-label="列表循环 开" title="列表循环 开"></button></div>
+<div id="relay-tasks" class="relay-tasks"></div>
+<button class="icon-button relay-add" id="relay-add" title="添加任务" aria-label="添加任务"></button>
+</div>
+<p class="error" id="timer-error" role="alert"></p>
+</div>
+<div id="default-actions-slot">
+<div class="actions" id="timer-actions">
+<button aria-label="开始" class="primary" id="timer-start" title="开始"><svg aria-hidden="true" fill="currentColor" viewbox="0 0 24 24"><path d="m8 5 11 7-11 7z"></path></svg></button>
+<button aria-label="重置" class="secondary" id="timer-reset" title="重置"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.5 7M3 4v7h7"></path></svg></button>
+</div>
+</div>
+<p class="end-time" id="timer-end"></p>
+</section>
+<section aria-label="间隔提醒" class="reminder">
+<div class="reminder-row">
+<div class="reminder-fields">
+<label class="" for="interval-value">每</label>
+<input aria-describedby="reminder-error" aria-label="提醒间隔" id="interval-value" inputmode="numeric" max="999" min="1" step="1" type="number" value="5"/>
+<select aria-label="提醒间隔单位" id="interval-unit"><option value="1000">秒</option><option selected="" value="60000">分钟</option><option value="3600000">小时</option></select>
+<span class="suffix">提醒</span>
+<button aria-pressed="false" aria-label="启动提醒" title="启动提醒" class="reminder-toggle" id="reminder-toggle"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg></button>
+</div>
+<div class="reminder-controls">
+<span aria-label="距下次提醒" aria-live="off" class="reminder-countdown" hidden="" id="reminder-readout" role="timer"></span>
+</div>
+</div>
+<p class="error" id="reminder-error" role="alert"></p>
+</section>
+</main>
+<footer id="page-note">当前浏览器无法保存；刷新会丢失计时。</footer>
+</div>
+<div aria-atomic="false" aria-live="polite" class="toasts" id="toasts" role="status"></div>
+<script>
+
+'use strict';
+(() => {
+const $ = id => document.getElementById(id);
+const KEY = 'adhd-timer-v3';
+const ITEM_H = 36, MAX_DATE = 8640000000000000, MAX_DURATION = (999*3600+59*60+59)*1000;
+const MODES = ['duration','deadline','relay'];
+const modeNames = {duration:'时长',deadline:'定点',relay:'任务接力'};
+const pad = n => String(n).padStart(2,'0');
+const dateValue = d => String(d.getFullYear()).padStart(4,'0')+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const clockText = (d,seconds=true) => pad(d.getHours())+':'+pad(d.getMinutes())+(seconds ? ':'+pad(d.getSeconds()) : '');
+function formatDigital(ms,roundUp=true) {
+ const seconds = Math.max(0,(roundUp ? Math.ceil : Math.floor)(ms/1000));
+ const days = Math.floor(seconds/86400), hours = Math.floor(seconds/3600)%24;
+ return (days ? days+'天 ' : '')+(hours || days ? pad(hours)+':' : '')+pad(Math.floor(seconds/60)%60)+':'+pad(seconds%60);
+}
+function formatStopwatch(ms) {
+ const centiseconds = Math.max(0,Math.floor(ms/10));
+ return formatDigital(Math.floor(centiseconds/100)*1000,false)+'.'+pad(centiseconds%100);
+}
+function endText(ms) {
+ const d = new Date(ms), today = new Date();
+ return (dateValue(d) === dateValue(today) ? '' : (d.getFullYear() === today.getFullYear() ? '' : d.getFullYear()+'年')+(d.getMonth()+1)+'月'+d.getDate()+'日 ')+clockText(d,false);
+}
+const idleTimer = mode => ({status:'idle',mode,end:0,total:0,remaining:0,notified:false,isPast:false});
+const nextHour = new Date(Date.now()+3600000); nextHour.setMinutes(0,0,0);
+const relayPalette=['#72957d','#7897b5','#b89a6a','#a586ad','#bf8782','#78a5a3'];
+const newTask=(id,name,duration,color) => ({id,name,duration,color});
+function defaultRelay() {return {status:'idle',tasks:[newTask('task-1','任务1',1500000,relayPalette[0]),newTask('task-2','任务2',300000,relayPalette[1])],currentId:null,elapsed:0,startedAt:0,completed:[],pausedElapsed:{},pauseBetween:false,loop:false};}
+const state = {
+ sound:true, clockShowSeconds:true, durationCompactMode:false, deadlineCompactMode:true, mode:'duration',
+ settings:{hours:'0',minutes:'25',seconds:'0',date:dateValue(nextHour),hour:pad(nextHour.getHours()),minute:pad(nextHour.getMinutes()),interval:'5',unit:'60000'},
+ timers:{duration:idleTimer('duration'),deadline:idleTimer('deadline')},
+ // Retain legacy stopwatch data without mapping elapsed records into a task schedule.
+ stopwatch:{status:'idle',elapsed:0,startedAt:0,laps:[]},
+ relay:defaultRelay(),
+ reminder:{running:false,interval:300000,next:0,last:0}
+};
+const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const numberIn = (value,min,max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+function validDate(value) {
+ if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+ const [y,m,d] = value.split('-').map(Number), date = new Date(y,m-1,d);
+ return y >= 1000 && y <= 9999 && date.getFullYear() === y && date.getMonth() === m-1 && date.getDate() === d;
+}
+function numericSetting(value,min,max,allowBlank=false) {
+ return typeof value === 'string' && value.length <= 12 && ((allowBlank && value === '') || (/^\d+$/.test(value) && Number(value) >= min && Number(value) <= max));
+}
+function restoreTimer(source,mode) {
+ const fallback = idleTimer(mode);
+ if (!isObject(source) || !['idle','running','paused','overtime','past'].includes(source.status) || (mode === 'duration' && source.status === 'past')) return fallback;
+ if (source.status === 'idle') return fallback;
+ if (!numberIn(source.end,1,MAX_DATE) || !numberIn(source.total,source.status === 'running' ? 1 : 0,mode === 'duration' ? MAX_DURATION : MAX_DATE) || !numberIn(source.remaining,0,source.total)) return fallback;
+ if (['overtime','past'].includes(source.status) && source.end > Date.now()) return fallback;
+ return {status:source.status,mode,end:source.end,total:source.total,remaining:source.remaining,notified:source.notified === true,isPast:source.status === 'past'};
+}
+function stopwatchElapsed(now=Date.now()) {
+ const s = state.stopwatch;
+ return s.elapsed+(s.status === 'running' ? Math.max(0,now-s.startedAt) : 0);
+}
+// Restore each independent field without trusting the saved object wholesale.
+try {
+ const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+ if (isObject(saved)) {
+  if (typeof saved.sound === 'boolean') state.sound = saved.sound;
+  if (typeof saved.clockShowSeconds === 'boolean') state.clockShowSeconds = saved.clockShowSeconds;
+  else if (typeof saved.showSeconds === 'boolean') state.clockShowSeconds = saved.showSeconds;
+  for (const key of ['durationCompactMode','deadlineCompactMode']) if (typeof saved[key] === 'boolean') state[key] = saved[key];
+  if (MODES.includes(saved.mode)) state.mode = saved.mode;
+  else if (saved.mode === 'stopwatch') state.mode='relay';
+  if (isObject(saved.relay)) restoreRelay(saved.relay);
+  const settings = isObject(saved.settings) ? saved.settings : {};
+  for (const [key,min,max,blank] of [['hours',0,999,true],['minutes',0,59,true],['seconds',0,59,true],['hour',0,23,false],['minute',0,59,false],['interval',1,999,false]]) {
+   if (numericSetting(settings[key],min,max,blank)) state.settings[key] = settings[key];
+  }
+  if (validDate(settings.date)) state.settings.date = settings.date;
+  if (['1000','60000','3600000'].includes(settings.unit)) state.settings.unit = settings.unit;
+  if (isObject(saved.timers)) {
+   for (const mode of ['duration','deadline']) state.timers[mode] = restoreTimer(saved.timers[mode],mode);
+  } else if (isObject(saved.timer) && ['duration','deadline'].includes(saved.timer.mode)) {
+   state.timers[saved.timer.mode] = restoreTimer(saved.timer,saved.timer.mode);
+  }
+  const r = saved.reminder;
+  if (isObject(r) && typeof r.running === 'boolean' && numberIn(r.interval,1000,999*3600000) && Number.isInteger(r.interval) && (!r.running || numberIn(r.next,1,MAX_DATE))) {
+   state.reminder = {running:r.running,interval:r.interval,next:r.running ? r.next : 0,last:numberIn(r.last,0,Date.now()) ? r.last : 0};
+  }
+  const s = saved.stopwatch;
+  if (isObject(s) && ['idle','running','paused'].includes(s.status) && numberIn(s.elapsed,0,MAX_DATE) && (s.status !== 'running' || numberIn(s.startedAt,1,MAX_DATE))) {
+   state.stopwatch = {status:s.status,elapsed:s.status === 'idle' ? 0 : s.elapsed,startedAt:s.status === 'running' ? s.startedAt : 0,laps:[]};
+   let previous = 0;
+   if (s.status !== 'idle' && Array.isArray(s.laps)) {
+    const total = stopwatchElapsed();
+    for (const lap of s.laps) {
+     if (isObject(lap) && numberIn(lap.elapsed,previous,total) && lap.elapsed > previous) {
+      state.stopwatch.laps.push({elapsed:lap.elapsed,split:lap.elapsed-previous}); previous = lap.elapsed;
+     }
+    }
+   }
+  }
+ }
+} catch { /* Disabled storage or corrupt JSON does not prevent operation. */ }
+let saveJob;
+function save() {
+ clearTimeout(saveJob);
+ try { localStorage.setItem(KEY,JSON.stringify({version:7,...state})); $('page-note').textContent = '提醒需保持页面打开。'; }
+ catch { $('page-note').textContent = '当前浏览器无法保存；刷新会丢失计时。'; }
+}
+function queueSave() { clearTimeout(saveJob); saveJob = setTimeout(save,200); }
+window.addEventListener('pagehide',save);
+function toast(message) {
+ const item = document.createElement('div'); item.className = 'toast'; item.textContent = message;
+ while ($('toasts').children.length >= 3) $('toasts').firstElementChild.remove();
+ $('toasts').append(item); setTimeout(() => item.remove(),4000);
+}
+let audio;
+async function unlockAudio() {
+ if (!state.sound) return false;
+ try {
+  const Audio = window.AudioContext || window.webkitAudioContext;
+  if (!Audio) return false;
+  if (!audio || audio.state === 'closed') audio = new Audio();
+  if (audio.state !== 'running') await audio.resume();
+  return audio.state === 'running';
+ } catch { return false; }
+}
+function chime() {
+ if (!state.sound || !audio || audio.state !== 'running') return false;
+ try {
+  const start = audio.currentTime;
+  [659.25,784].forEach((hz,i) => {
+   const osc = audio.createOscillator(), gain = audio.createGain(), at = start+i*.22;
+   osc.frequency.value = hz; osc.type = 'sine';
+   gain.gain.setValueAtTime(0,at); gain.gain.linearRampToValueAtTime(.12,at+.025); gain.gain.exponentialRampToValueAtTime(.001,at+.55);
+   osc.connect(gain); gain.connect(audio.destination);
+   osc.onended = () => {osc.disconnect();gain.disconnect();}; osc.start(at); osc.stop(at+.6);
+  });
+  return true;
+ } catch { return false; }
+}
+function notify(message) { const played = chime(); toast(message+(state.sound && !played ? ' · 点击试听启用声音' : '')); }
+const speaker = '<path d="M11 5 6 9H3v6h3l5 4z"/>';
+function renderSound() {
+ $('sound').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+speaker+(state.sound ? '<path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>' : '<path d="m16 9 6 6m0-6-6 6"/>')+'</svg>';
+ $('sound').setAttribute('aria-pressed',String(state.sound));
+ $('sound').setAttribute('aria-label',state.sound ? '关闭声音' : '开启声音');
+ $('sound').title = state.sound ? '关闭声音' : '开启声音';
+}
+$('sound').onclick = async () => { state.sound = !state.sound; renderSound(); save(); if (state.sound && !await unlockAudio()) toast('请点击试听重试。'); };
+$('test-sound').onclick = async () => { if (!state.sound) {toast('请先开启声音。');return;} if (!await unlockAudio() || !chime()) toast('浏览器无法播放。'); };
+document.addEventListener('pointerdown',() => {void unlockAudio();},{once:true});
+document.addEventListener('keydown',() => {void unlockAudio();},{once:true});
+$('clock').onclick = () => {state.clockShowSeconds = !state.clockShowSeconds;save();tick();};
+function integer(id,min,max,emptyIsZero=false) {
+ const input = $(id), raw = input.value.trim();
+ if (input.validity.badInput) return null;
+ if (raw === '' && emptyIsZero) return 0;
+ return /^\d+$/.test(raw) && Number(raw) >= min && Number(raw) <= max ? Number(raw) : null;
+}
+function timerValue(mode,now=Date.now()) {
+ if (mode === 'duration') {
+  const h = integer('hours',0,999,true), m = integer('minutes',0,59,true), s = integer('seconds',0,59,true);
+  if ([h,m,s].includes(null)) return {error:'请输入有效时长：时 0–999，分和秒 0–59。'};
+  const ms = (h*3600+m*60+s)*1000;
+  return ms ? {ms,end:now+ms,isPast:false} : {error:'总时长至少为 1 秒，留空按 0 计算。'};
+ }
+ const settings = state.settings;
+ if (!validDate(settings.date) || !numericSetting(settings.hour,0,23) || !numericSetting(settings.minute,0,59)) return {error:'请选择有效的日期和时刻。'};
+ const [y,m,d] = settings.date.split('-').map(Number), h = Number(settings.hour), minute = Number(settings.minute);
+ const target = new Date(y,m-1,d,h,minute,0,0);
+ if (target.getFullYear() !== y || target.getMonth() !== m-1 || target.getDate() !== d || target.getHours() !== h || target.getMinutes() !== minute) return {error:'该时刻不存在，请重新选择。'};
+ const end = target.getTime(), diff = end-now;
+ return {ms:Math.abs(diff),end,isPast:diff <= 0};
+}
+function intervalValue() {
+ const value = integer('interval-value',1,999), unit = Number($('interval-unit').value);
+ return value !== null && [1000,60000,3600000].includes(unit) ? {ms:value*unit} : {error:'间隔请输入 1–999 的整数。'};
+}
+const errors = {duration:'',deadline:'',relay:''};
+const durationRejectionJobs = {};
+function clearDurationInputFeedback(id) {
+ clearTimeout(durationRejectionJobs[id]);delete durationRejectionJobs[id];delete $(id).closest('.segment').dataset.rejected;
+}
+function showError(type,message='') {
+ if (type === 'reminder') { $('reminder-error').textContent = message; $('interval-value').setAttribute('aria-invalid',String(Boolean(message))); return; }
+ if (state.mode === 'duration') {
+  for (const [id,min,max] of [['hours',0,999],['minutes',0,59],['seconds',0,59]]) $(id).setAttribute('aria-invalid',String(integer(id,min,max,true) === null));
+ }
+ errors[state.mode] = message; $('timer-error').textContent = message;
+}
+function setText(id,text) { const node = $(id); if (node.textContent !== text) node.textContent = text; }
+function setHTML(id,html) { const node = $(id); if (node.innerHTML !== html) node.innerHTML = html; }
+
+
+let deadlineEditorOpen=false;
+function syncDeadlinePickers() {
+ dateWheelCtrl.syncValue();hourWheelCtrl.syncValue();minWheelCtrl.syncValue();
+}
+function retargetDeadline(now=Date.now()) {
+ const t=state.timers.deadline;
+ if (t.status === 'idle') return true;
+ const value=timerValue('deadline',now);
+ if (value.error) {showError('timer',value.error);return false;}
+ const paused=t.status === 'paused' && !value.isPast;
+ state.timers.deadline={status:paused ? 'paused' : value.isPast ? 'past' : 'running',mode:'deadline',end:value.end,total:value.ms,remaining:value.ms,notified:value.isPast,isPast:value.isPast};
+ showError('timer');renderControls();return true;
+}
+$('deadline-more').onclick=() => {
+ deadlineEditorOpen=!deadlineEditorOpen;
+ const t=state.timers.deadline;
+ if (deadlineEditorOpen && t.status !== 'idle') {
+  const target=new Date(t.end);
+  state.settings.date=dateValue(target);state.settings.hour=pad(target.getHours());state.settings.minute=pad(target.getMinutes());
+  buildDateOptions();dateWheelCtrl.refresh();
+ }
+ renderControls();
+ if (deadlineEditorOpen) syncDeadlinePickers();
+ save();tick();
+};
+
+// Calendar arithmetic keeps wheel dates correct across daylight-saving changes.
+const dateOptions = [];
+let datesBuiltFor = '', dateWheelCtrl, hourWheelCtrl, minWheelCtrl;
+function buildDateOptions(now=new Date()) {
+ datesBuiltFor = dateValue(now);
+ const values = new Set();
+ for (let offset=-7;offset<=30;offset++) {
+  const date = new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  date.setDate(date.getDate()+offset); values.add(dateValue(date));
+ }
+ if (validDate(state.settings.date)) values.add(state.settings.date);
+ const tomorrow = new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
+ dateOptions.splice(0,dateOptions.length,...[...values].sort().map(value => {
+  const [y,m,d] = value.split('-').map(Number);
+  const tag = value === datesBuiltFor ? '今天' : value === dateValue(tomorrow) ? '明天' : '';
+  return {value,label:y+'年'+m+'月'+d+'日'+(tag ? '，'+tag : ''),html:'<div class="date-line-item"><span class="date-box-month">'+m+'</span><span class="date-unit-label">月</span><span class="date-box-day">'+d+'</span><span class="date-unit-label">日</span><span class="date-tag">'+tag+'</span></div>'};
+ }));
+}
+const hourOptions = Array.from({length:24},(_,n) => ({value:pad(n),label:pad(n)+' 时'}));
+const minuteOptions = Array.from({length:60},(_,n) => ({value:pad(n),label:pad(n)+' 分'}));
+function setupWheel(colId,contentId,options,getValue,onSelect,label) {
+ const col = $(colId), content = $(contentId);
+ let scrollJob, userScrolling = false, disabled = false;
+ col.tabIndex = 0; col.setAttribute('role','spinbutton'); col.setAttribute('aria-label',label);
+ function currentIndex() { const index = options.findIndex(option => option.value === getValue()); return index < 0 ? 0 : index; }
+ function highlight(index=currentIndex()) {
+  for (let i=0;i<content.children.length;i++) content.children[i].classList.toggle('is-selected',i === index);
+  col.setAttribute('aria-valuemin','0'); col.setAttribute('aria-valuemax',String(options.length-1)); col.setAttribute('aria-valuenow',String(index)); col.setAttribute('aria-valuetext',options[index].label);
+ }
+ function scrollToIndex(index,smooth=false) {
+  if (!col.getClientRects().length) return;
+  col.scrollTo({top:index*ITEM_H,behavior:smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'instant'});
+ }
+ function syncValue(smooth=false) { clearTimeout(scrollJob);userScrolling=false;highlight();scrollToIndex(currentIndex(),smooth); }
+ function choose(index) {
+  if (disabled) return;
+  clearTimeout(scrollJob); userScrolling=false;
+  index = Math.max(0,Math.min(options.length-1,index));
+  if (getValue() !== options[index].value) onSelect(options[index].value);
+  highlight(index);scrollToIndex(index,true);
+ }
+ function refresh() {
+  clearTimeout(scrollJob); userScrolling=false; content.replaceChildren();
+  options.forEach((option,index) => {
+   const item = document.createElement('div'); item.className='picker-item';item.dataset.index=String(index);item.dataset.value=option.value;
+   if (option.html) item.innerHTML=option.html; else item.textContent=option.label;
+   content.append(item);
+  });
+  syncValue();
+ }
+ col.addEventListener('wheel',event => {
+  if (disabled) {event.preventDefault();return;}
+  userScrolling=true;
+ },{passive:false});
+ col.addEventListener('pointerdown',() => {if (!disabled) userScrolling=true;});
+ col.addEventListener('touchstart',() => {if (!disabled) userScrolling=true;},{passive:true});
+ col.addEventListener('scroll',() => {
+  if (!col.getClientRects().length) return;
+  const index = Math.max(0,Math.min(options.length-1,Math.round(col.scrollTop/ITEM_H)));
+  highlight(index);
+  if (!userScrolling || disabled) return;
+  clearTimeout(scrollJob); scrollJob=setTimeout(() => choose(index),120);
+ },{passive:true});
+ content.addEventListener('click',event => {
+  const item=event.target.closest('.picker-item');
+  if (item) choose(Number(item.dataset.index));
+ });
+ col.addEventListener('keydown',event => {
+  if (disabled) return;
+  const deltas={ArrowUp:-1,ArrowDown:1,PageUp:-5,PageDown:5};
+  if (!(event.key in deltas) && event.key !== 'Home' && event.key !== 'End') return;
+  event.preventDefault();
+  choose(event.key === 'Home' ? 0 : event.key === 'End' ? options.length-1 : currentIndex()+deltas[event.key]);
+ });
+ function setDisabled(value) {
+  disabled=value;col.setAttribute('aria-disabled',String(value));col.tabIndex=value ? -1 : 0;
+  if (value) {clearTimeout(scrollJob);userScrolling=false;}
+ }
+ refresh();
+ return {syncValue,refresh,setDisabled};
+}
+function initPickers() {
+ buildDateOptions();
+ const onChange = key => value => {state.settings[key]=value;errors.deadline='';$('timer-error').textContent=errors[state.mode];retargetDeadline();queueSave();tick();};
+ dateWheelCtrl=setupWheel('picker-col-date','picker-content-date',dateOptions,() => state.settings.date,onChange('date'),'目标日期');
+ hourWheelCtrl=setupWheel('picker-col-hour','picker-content-hour',hourOptions,() => pad(Number(state.settings.hour)),onChange('hour'),'目标小时');
+ minWheelCtrl=setupWheel('picker-col-minute','picker-content-minute',minuteOptions,() => pad(Number(state.settings.minute)),onChange('minute'),'目标分钟');
+}
+function ensureCalendar(now=new Date()) {
+ if (dateValue(now) !== datesBuiltFor) {buildDateOptions(now);dateWheelCtrl.refresh();}
+}
+$('return-today').onclick = () => {
+ if (state.timers.deadline.status !== 'idle' && !deadlineEditorOpen) return;
+ const today = new Date();ensureCalendar(today);
+ const changed=state.settings.date !== dateValue(today);
+ state.settings.date=dateValue(today);dateWheelCtrl.syncValue(true);showError('timer');if (changed) retargetDeadline();save();tick();
+};
+
+const playPath = '<path d="m8 5 11 7-11 7z"/>';
+const pausePath = '<path d="M7 5h4v14H7zm6 0h4v14h-4z"/>';
+const completePath = '<path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+function modeIsRunning(mode) { return mode === 'relay' ? state.relay.status === 'running' : ['running','overtime','past'].includes(state.timers[mode].status); }
+function renderTabs() {
+ for (const mode of MODES) {
+  const tab=$('mode-'+mode), background=state.mode !== mode && modeIsRunning(mode);
+  tab.disabled=false;tab.setAttribute('aria-pressed',String(state.mode === mode));
+  tab.setAttribute('aria-label',modeNames[mode]+(background ? '，后台运行中' : ''));
+ }
+}
+
+function restoreRelay(source) {
+ const r=defaultRelay(),ids=new Set();
+ if (Array.isArray(source.tasks)) {
+  r.tasks=[];
+  for (const t of source.tasks) {
+   if (!isObject(t) || typeof t.id !== 'string' || !t.id || t.id.length>100 || ids.has(t.id) || !numberIn(t.duration,1000,MAX_DURATION) || t.duration%1000) continue;
+   ids.add(t.id);
+   r.tasks.push(newTask(t.id,typeof t.name === 'string' ? t.name.trim().slice(0,80) || '任务' : '任务',t.duration,typeof t.color === 'string' && /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : relayPalette[r.tasks.length%relayPalette.length]));
+  }
+ }
+ r.pausedElapsed={};
+ if (isObject(source.pausedElapsed)) for (const [id,elapsed] of Object.entries(source.pausedElapsed)) {const task=r.tasks.find(t => t.id === id);if (task && numberIn(elapsed,0,task.duration)) r.pausedElapsed[id]=elapsed;}
+ r.pauseBetween=source.pauseBetween === true;r.loop=source.loop === true;
+ if (['idle','running','paused','done'].includes(source.status)) r.status=source.status;
+ if (r.status !== 'idle' && Array.isArray(source.completed)) {
+  const seen=new Set();
+  for (const item of source.completed) if (isObject(item) && ids.has(item.id) && !seen.has(item.id) && numberIn(item.duration,1000,MAX_DURATION)) {
+   seen.add(item.id);r.completed.push({id:item.id,duration:item.duration});
+  }
+ }
+ if (['running','paused'].includes(r.status)) {
+  if (ids.has(source.currentId) && !r.completed.some(c => c.id === source.currentId) && numberIn(source.elapsed,0,MAX_DURATION) && (r.status !== 'running' || numberIn(source.startedAt,1,MAX_DATE))) {
+   r.currentId=source.currentId;r.elapsed=source.elapsed;r.startedAt=r.status === 'running' ? source.startedAt : 0;
+  } else {r.status='idle';r.completed=[];}
+ }
+ if (!r.tasks.length) {r.status='idle';r.completed=[];}
+ state.relay=r;
+ normalizeRelayOrder();
+}
+function relayCurrent() {return state.relay.tasks.find(t => t.id === state.relay.currentId);}
+function relayElapsed(now=Date.now()) {
+ const r=state.relay;
+ return r.elapsed+(r.status === 'running' ? Math.max(0,now-r.startedAt) : 0);
+}
+function relayRemaining(now=Date.now()) {
+ const r=state.relay,t=relayCurrent() || (r.status === 'idle' ? r.tasks[0] : null);
+ return t ? Math.max(0,t.duration-(r.status === 'idle' ? 0 : relayElapsed(now))) : 0;
+}
+function relayPending() {
+ const r=state.relay,done=new Set(r.completed.map(c => c.id));
+ return r.tasks.filter(t => !done.has(t.id) && t.id !== r.currentId);
+}
+function normalizeRelayOrder() {
+ const r=state.relay;
+ if (!['running','paused'].includes(r.status)) return;
+ const byId=new Map(r.tasks.map(t => [t.id,t])),used=new Set(),ordered=[];
+ for (const item of r.completed) if (byId.has(item.id) && !used.has(item.id)) {used.add(item.id);ordered.push(byId.get(item.id));}
+ r.tasks=ordered.concat(r.tasks.filter(t => !used.has(t.id)));
+}
+function relayCanMove(id) {
+ const r=state.relay,completed=r.completed.some(c => c.id === id);
+ if (!['running','paused'].includes(r.status)) return true;
+ return !completed;
+}
+function resetRelay() {
+ const r=state.relay;
+ r.status='idle';r.currentId=null;r.elapsed=0;r.startedAt=0;r.completed=[];r.pausedElapsed={};
+}
+function beginRelay(now) {
+ const r=state.relay;
+ if (!r.tasks.length) return;
+ r.status='running';r.currentId=r.tasks[0].id;r.elapsed=0;r.startedAt=now;r.completed=[];r.pausedElapsed={};
+}
+function settleRelay(now,force=false) {
+ const r=state.relay;
+ if (r.status !== 'running' && !(force && r.status === 'paused')) return false;
+ let t=relayCurrent(),elapsed=relayElapsed(now),count=0;
+ const wasPaused=r.status === 'paused';
+ if (!t || elapsed<t.duration) return false;
+ if (relayDrag) finishRelayDrag(false);
+ while (t && elapsed>=t.duration) {
+  elapsed-=t.duration;count++;
+  r.completed.push({id:t.id,duration:t.duration});delete r.pausedElapsed[t.id];
+  let next=relayPending()[0];
+  if (!next && !r.loop) {
+   r.status='done';r.currentId=null;r.elapsed=0;r.startedAt=0;r.pausedElapsed={};break;
+  }
+  if (!next) {
+   r.completed=[];r.pausedElapsed={};next=r.tasks[0];
+   if (!next) {resetRelay();break;}
+   if (!r.pauseBetween && !wasPaused) {
+    const cycle=r.tasks.reduce((sum,item) => sum+item.duration,0);
+    const skipped=Math.floor(elapsed/cycle);
+    if (skipped) {elapsed%=cycle;count+=skipped*r.tasks.length;}
+   }
+  }
+  r.currentId=next.id;
+  const resumedElapsed=r.pausedElapsed[next.id] || 0;
+  r.elapsed=resumedElapsed;delete r.pausedElapsed[next.id];
+  if (r.pauseBetween || wasPaused) {
+   r.status='paused';r.startedAt=0;break;
+  }
+  t=next;elapsed+=resumedElapsed;r.elapsed=elapsed;r.startedAt=now;
+ }
+ normalizeRelayOrder();
+ const next=relayCurrent();
+ notify(r.status === 'done' ? '任务接力完成' : count>1 ? '任务接力已推进 · '+next.name : '任务完成 · '+(r.status === 'paused' ? '已暂停，下一项：' : '开始：')+next.name);
+ return true;
+}
+function relayTint(hex) {
+ const rgb=[1,3,5].map(i => Math.round(parseInt(hex.slice(i,i+2),16)*.18+248*.82));
+ return 'rgb('+rgb.join(',')+')';
+}
+function relaySvg(path,fill=false) {
+ return '<svg viewBox="0 0 24 24" fill="'+(fill ? 'currentColor' : 'none')+'" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+path+'</svg>';
+}
+function relayIcon(label,path,handler) {
+ const button=document.createElement('button');button.type='button';button.title=label;button.setAttribute('aria-label',label);button.innerHTML=relaySvg(path);button.onclick=handler;return button;
+}
+const relayResetPath='<path d="M3 11a9 9 0 1 1 2.5 7M3 4v7h7"/>';
+const relayLoopPath='<path d="m17 2 4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4m14-1v2a3 3 0 0 1-3 3H3"/>';
+let relayDrag=null,relayTotalChanged=false;
+function relayAnimateOrder(container,order,animate=true) {
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ if (reduced) for (const node of container.children) for (const animation of node.getAnimations()) animation.cancel();
+ const old=new Map([...container.children].map(node => [node.dataset.id,node.getBoundingClientRect()]));
+ if (order.some((id,i) => container.children[i]?.dataset.id !== id)) {
+  for (const node of container.children) for (const animation of node.getAnimations()) animation.cancel();
+  const nodes=new Map([...container.children].map(node => [node.dataset.id,node]));
+  for (const id of order) if (nodes.has(id)) container.append(nodes.get(id));
+  if (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+   for (const node of container.children) {
+    const before=old.get(node.dataset.id),after=node.getBoundingClientRect();
+    if (!before || (relayDrag && relayDrag.id === node.dataset.id && container === relayDrag.container)) continue;
+    const x=before.left-after.left,y=before.top-after.top;
+    if (Math.abs(x)+Math.abs(y)<.5) continue;
+    for (const animation of node.getAnimations()) animation.cancel();
+    node.animate([{transform:'translate('+x+'px,'+y+'px)'},{transform:'translate(0,0)'}],{duration:220,easing:'cubic-bezier(.2,.8,.2,1)'});
+   }
+  }
+ }
+}
+function relayApplyOrder(ids,announce=false) {
+ const r=state.relay,byId=new Map(r.tasks.map(t => [t.id,t])),active=['running','paused'].includes(r.status);
+ const fixed=active ? r.tasks.filter(t => r.completed.some(c => c.id === t.id)) : [];
+ r.tasks=fixed.concat(ids.map(id => byId.get(id)).filter(Boolean));
+ normalizeRelayOrder();
+ renderRelay(true);save();
+ if (announce) setText('relay-announcement','顺序已调整');
+}
+function relayContinueAfterReorder(currentId,elapsed,status,now) {
+ const r=state.relay,completed=new Set(r.completed.map(item => item.id));
+ const next=r.tasks.find(task => !completed.has(task.id));
+ if (next && next.id !== currentId) {
+  r.pausedElapsed[currentId]=elapsed;r.currentId=next.id;r.elapsed=r.pausedElapsed[next.id] || 0;delete r.pausedElapsed[next.id];
+ } else {r.currentId=currentId;r.elapsed=elapsed;}
+ r.status=status;r.startedAt=status === 'running' ? now : 0;
+}
+function moveRelayTask(id,delta,fromList=false) {
+ const now=Date.now();updateRunningTimers(now);
+ const r=state.relay,ids=r.tasks.filter(t => relayCanMove(t.id)).map(t => t.id),index=ids.indexOf(id),target=index+delta;
+ if (index<0 || target<0 || target>=ids.length) return;
+ const status=r.status,currentId=r.currentId,elapsed=relayElapsed(now);
+ if (status === 'running') {r.elapsed=elapsed;r.startedAt=0;r.status='paused';}
+ ids.splice(target,0,ids.splice(index,1)[0]);relayApplyOrder(ids,true);
+ if (['running','paused'].includes(status)) {relayContinueAfterReorder(currentId,elapsed,status,now);renderRelay();renderControls();save();tick();}
+ const targetNode=[...$(fromList ? 'relay-tasks' : 'relay-track').children].find(node => node.dataset.id === id);
+ (fromList ? targetNode?.querySelector('.relay-drag-handle') : targetNode)?.focus({preventScroll:true});
+}
+function removeRelayTask(id) {
+ const now=Date.now();updateRunningTimers(now);
+ const r=state.relay,wasCurrent=r.currentId === id,oldStatus=r.status;
+ r.tasks=r.tasks.filter(t => t.id !== id);r.completed=r.completed.filter(t => t.id !== id);delete r.pausedElapsed[id];
+ if (!r.tasks.length) resetRelay();
+ else if (wasCurrent) {
+  const next=relayPending()[0];
+  r.currentId=next?.id || null;r.elapsed=next ? r.pausedElapsed[next.id] || 0 : 0;if (next) delete r.pausedElapsed[next.id];r.startedAt=oldStatus === 'running' && next ? now : 0;
+  r.status=next ? oldStatus : 'done';
+ }
+ normalizeRelayOrder();renderRelay(true);renderControls();save();tick();
+}
+function commitRelayDuration(row,id) {
+ const task=state.relay.tasks.find(t => t.id === id);if (!task) return false;
+ const inputs=[...row.querySelectorAll('.relay-time-fields input')];
+ const values=inputs.map((input,i) => {
+  const raw=input.value.trim(),max=i === 0 ? 999 : 59;
+  const valid=!input.validity.badInput && (raw === '' || /^\d+$/.test(raw) && Number(raw)<=max);
+  input.setAttribute('aria-invalid',String(!valid));return valid ? Number(raw || 0) : null;
+ });
+ const error=row.querySelector('.relay-task-error');
+ if (values.includes(null)) {error.textContent='限 '+(values[0] === null ? '0–999' : '0–59')+' 整数';return false;}
+ const duration=(values[0]*3600+values[1]*60+values[2])*1000;
+ if (!duration) {inputs.forEach(input => input.setAttribute('aria-invalid','true'));error.textContent='至少 1 秒';return false;}
+ error.textContent='';errors.relay='';
+ if (state.mode === 'relay') $('timer-error').textContent='';
+ if (task.duration === duration) return true;
+ const now=Date.now();updateRunningTimers(now);
+ const r=state.relay,elapsed=relayElapsed(now);
+ task.duration=duration;relayTotalChanged=state.mode === 'relay';if (Object.hasOwn(r.pausedElapsed,id)) r.pausedElapsed[id]=Math.min(r.pausedElapsed[id],duration);
+ if (r.currentId === id) {r.elapsed=elapsed;r.startedAt=r.status === 'running' ? now : 0;settleRelay(now,true);}
+ renderRelay();renderControls();save();tick();return true;
+}
+function formatRelayTaskDuration(ms) {
+ const seconds=Math.round(ms/1000),parts=[[Math.floor(seconds/3600),'h'],[Math.floor(seconds/60)%60,'min'],[seconds%60,'s']];
+ return parts.filter(([value]) => value>0).map(([value,unit]) => '<span class="relay-duration-part"><span class="num">'+value+'</span><span class="unit">'+unit+'</span></span>').join('');
+}
+let relaySelectedTaskId=null;
+function selectRelayRow(id) {
+ relaySelectedTaskId=id;
+ for (const row of $('relay-tasks').children) row.dataset.selected=String(row.dataset.id === id);
+}
+function showRelayTimeEditor(row,open) {
+ row.dataset.editing=String(open);row.querySelector('.relay-time-fields').hidden=!open;
+ row.querySelector('.relay-duration').setAttribute('aria-expanded',String(open));
+}
+function resetRelayTimeFields(row) {
+ const task=state.relay.tasks.find(t => t.id === row.dataset.id);if (!task) return;
+ const seconds=Math.round(task.duration/1000),values=[Math.floor(seconds/3600),Math.floor(seconds/60)%60,seconds%60];
+ row.querySelectorAll('.relay-time-fields input').forEach((input,i) => {input.value=String(values[i]);input.setAttribute('aria-invalid','false');});
+ row.querySelector('.relay-task-error').textContent='';
+}
+function closeRelayTimeEditor(row,cancel=false,focus=false) {
+ if (cancel) resetRelayTimeFields(row);
+ else if (!commitRelayDuration(row,row.dataset.id)) return false;
+ showRelayTimeEditor(row,false);
+ if (focus) row.querySelector('.relay-duration').focus({preventScroll:true});
+ return true;
+}
+function toggleRelayTimeEditor(row) {
+ if (!row.querySelector('.relay-time-fields').hidden) {closeRelayTimeEditor(row,false,true);return;}
+ for (const other of $('relay-tasks').children) if (other !== row && !other.querySelector('.relay-time-fields').hidden && !closeRelayTimeEditor(other)) {other.querySelector('[aria-invalid=true]')?.focus();return;}
+ resetRelayTimeFields(row);showRelayTimeEditor(row,true);selectRelayRow(row.dataset.id);
+ const inputs=row.querySelectorAll('.relay-time-fields input'),task=state.relay.tasks.find(t => t.id === row.dataset.id);
+ const target=inputs[task.duration>=3600000 ? 0 : task.duration>=60000 ? 1 : 2];target.focus({preventScroll:true});target.select();
+}
+document.addEventListener('pointerdown',event => {const row=event.target.closest('.relay-task');selectRelayRow(row?.dataset.id || null);});
+document.addEventListener('focusin',event => {const row=event.target.closest('.relay-task');selectRelayRow(row?.dataset.id || null);});
+
+function makeRelayRow(task) {
+ const row=document.createElement('div');row.className='relay-task';row.dataset.id=task.id;
+ const colorLabel=document.createElement('label');colorLabel.className='relay-color';
+ const color=document.createElement('input');color.type='color';color.value=task.color;color.title='任务颜色';color.setAttribute('aria-label','任务颜色');
+ color.oninput=() => {task.color=color.value;renderRelay();queueSave();};
+ colorLabel.append(color);
+ const name=document.createElement('input');name.className='relay-name';name.value=task.name;name.maxLength=80;name.placeholder='任务名称';name.setAttribute('aria-label','任务名称');
+ name.oninput=() => {task.name=name.value.trim() || '任务';renderRelay();queueSave();};
+ name.onblur=() => {name.value=task.name;};
+ const durationButton=document.createElement('button');durationButton.type='button';durationButton.className='relay-duration';durationButton.dataset.action='edit-time';durationButton.setAttribute('aria-expanded','false');durationButton.setAttribute('aria-controls','relay-fields-'+task.id);durationButton.onclick=() => toggleRelayTimeEditor(row);
+ const fields=document.createElement('div');fields.className='relay-time-fields';fields.id='relay-fields-'+task.id;fields.hidden=true;
+ const units=['时','分','秒'],values=[Math.floor(task.duration/3600000),Math.floor(task.duration/60000)%60,task.duration/1000%60];
+ units.forEach((unit,i) => {
+  const label=document.createElement('label'),input=document.createElement('input'),span=document.createElement('span');
+  input.type='number';input.inputMode='numeric';input.min='0';input.max=i === 0 ? '999' : '59';input.step='1';input.value=String(values[i]);input.placeholder='0';input.setAttribute('aria-label','任务时长：'+unit);input.setAttribute('aria-describedby','relay-error-'+task.id);input.setAttribute('aria-invalid','false');
+  input.addEventListener('change',() => commitRelayDuration(row,task.id));
+  input.addEventListener('keydown',event => {if (event.key === 'Enter') {event.preventDefault();closeRelayTimeEditor(row,false,true);}});
+  input.addEventListener('wheel',event => {if (document.activeElement === input) event.preventDefault();},{passive:false});
+  span.textContent=unit;label.append(input,span);fields.append(label);
+ });
+ const tools=document.createElement('div');tools.className='relay-task-tools';
+ const actions=document.createElement('div');actions.className='relay-row-actions';
+ const restart=relayIcon('当前任务从头计时',relayResetPath,() => {
+  const now=Date.now();updateRunningTimers(now);const r=state.relay;
+  if (r.currentId !== task.id) return;
+  if (!commitRelayDuration(row,task.id) || r.currentId !== task.id) return;
+  r.elapsed=0;r.startedAt=r.status === 'running' ? now : 0;renderRelay();save();tick();
+ });restart.dataset.action='restart';
+ const remove=relayIcon('删除任务','<path d="m6 6 12 12M6 18 18 6"/>',() => removeRelayTask(task.id));
+ const handle=relayIcon('拖动排序','<path d="M5 7h14M5 12h14M5 17h14"/>',() => {});
+ handle.className='relay-drag-handle';handle.dataset.action='drag';handle.setAttribute('aria-description','上下拖动排序，也可按上下方向键调整');
+ actions.append(restart,remove);tools.append(actions,handle);
+ const error=document.createElement('p');error.className='relay-task-error';error.id='relay-error-'+task.id;error.setAttribute('role','alert');
+ const body=document.createElement('div');body.className='relay-task-body';body.append(name,durationButton);
+ row.append(colorLabel,body,tools,fields,error);
+ row.addEventListener('click',() => selectRelayRow(task.id));
+ row.addEventListener('keydown',event => {if (event.key === 'Escape' && !fields.hidden) {event.preventDefault();event.stopPropagation();closeRelayTimeEditor(row,true,true);}});
+ return row;
+}
+function renderRelay(animate=false) {
+ const r=state.relay,track=$('relay-track'),list=$('relay-tasks'),ids=r.tasks.map(t => t.id),done=new Map(r.completed.map(t => [t.id,t.duration])),canReorder=r.tasks.filter(t => relayCanMove(t.id)).length>1;
+ for (const parent of [track,list]) for (const node of [...parent.children]) if (!ids.includes(node.dataset.id)) node.remove();
+ for (const [sequenceIndex,task] of r.tasks.entries()) {
+  let piece=[...track.children].find(node => node.dataset.id === task.id);
+  if (!piece) {
+   piece=document.createElement('button');piece.type='button';piece.className='relay-piece';piece.dataset.id=task.id;
+   const fill=document.createElement('span');fill.className='relay-fill';
+   const wave=document.createElement('span');wave.className='relay-wave-front';wave.setAttribute('aria-hidden','true');
+   const wave1=document.createElement('span');wave1.className='relay-wave-layer relay-wave-1';
+   const wave2=document.createElement('span');wave2.className='relay-wave-layer relay-wave-2';wave.append(wave1,wave2);fill.append(wave);
+   const label=document.createElement('span');label.className='relay-piece-name';piece.append(fill,label);track.append(piece);
+  }
+  let row=[...list.children].find(node => node.dataset.id === task.id);
+  if (!row) {row=makeRelayRow(task);list.append(row);}
+  for (const node of [piece,row]) {node.style.setProperty('--task-color',task.color);node.style.setProperty('--task-tint',relayTint(task.color));}
+  const current=r.currentId === task.id,complete=done.has(task.id) || r.status === 'done',fixed=!relayCanMove(task.id),draggable=!fixed && canReorder;
+  const weight=done.get(task.id) || task.duration;
+  piece.style.flexGrow=String(weight);piece.disabled=!draggable;piece.dataset.fixed=String(!draggable);piece.dataset.active=String(current && ['running','paused'].includes(r.status));piece.dataset.running=String(current && r.status === 'running');piece.setAttribute('aria-current',current ? 'step' : 'false');
+  piece.querySelector('.relay-piece-name').textContent=task.name;
+  piece.setAttribute('aria-label',task.name+'，'+formatDigital(weight)+(fixed ? '，已完成' : draggable ? '，可拖动或按左右方向键排序' : current ? '，当前任务' : ''));
+  piece.title=task.name+' · '+formatDigital(weight)+(fixed ? ' · 已完成' : draggable ? ' · 拖动调整顺序' : current ? ' · 当前任务' : '');
+  row.dataset.current=String(current);row.dataset.complete=String(complete);row.setAttribute('role','group');row.setAttribute('aria-label','第 '+(sequenceIndex+1)+' 项，'+task.name);
+  const marker=row.querySelector('.relay-color'),colorInput=marker.querySelector('input');
+  marker.dataset.sequence=String(sequenceIndex+1);marker.style.setProperty('--sequence-size',sequenceIndex>=99 ? '10px' : sequenceIndex>=9 ? '12px' : '14px');
+  colorInput.title='第 '+(sequenceIndex+1)+' 项颜色';colorInput.setAttribute('aria-label',colorInput.title);
+  row.querySelector('[data-action=drag]').disabled=!draggable;
+  const restartButton=row.querySelector('[data-action=restart]');restartButton.disabled=!current;restartButton.hidden=!current;
+  row.dataset.selected=String(relaySelectedTaskId === task.id);
+  const durationButton=row.querySelector('.relay-duration'),durationHTML=formatRelayTaskDuration(task.duration);
+  if (durationButton.innerHTML !== durationHTML) durationButton.innerHTML=durationHTML;
+  durationButton.title='编辑时长 · '+formatDigital(task.duration);durationButton.setAttribute('aria-label',task.name+'，时长 '+formatDigital(task.duration)+'，点击编辑');
+  if (!row.contains(document.activeElement)) {
+   row.querySelector('.relay-name').value=task.name;row.querySelector('input[type=color]').value=task.color;
+  }
+ }
+ relayAnimateOrder(track,ids,animate);relayAnimateOrder(list,ids,animate);
+ $('relay-pause-between').setAttribute('aria-checked',String(!r.pauseBetween));
+ $('relay-pause-between').title=r.pauseBetween ? '到点提醒并暂停，点击继续后开始下一项' : '到点提醒并自动开始下一项';
+ $('relay-loop').setAttribute('aria-pressed',String(r.loop));
+ const loopLabel='列表循环 '+(r.loop ? '关' : '开');$('relay-loop').title=loopLabel;$('relay-loop').setAttribute('aria-label',loopLabel);
+ if (!$('relay-loop').innerHTML) $('relay-loop').innerHTML=relaySvg(relayLoopPath);
+ if (!$('relay-add').innerHTML) $('relay-add').innerHTML=relaySvg('<path d="M12 5v14M5 12h14"/>');
+ renderRelayProgress();
+}
+function renderRelayProgress(now=Date.now()) {
+ const r=state.relay,done=new Set(r.completed.map(t => t.id)),elapsed=relayElapsed(now);
+ for (const piece of $('relay-track').children) {
+  const t=r.tasks.find(t => t.id === piece.dataset.id);if (!t) continue;
+  const ratio=r.status === 'done' || done.has(t.id) ? 1 : t.id === r.currentId ? Math.min(1,elapsed/t.duration) : Math.min(1,(r.pausedElapsed[t.id] || 0)/t.duration);
+  piece.querySelector('.relay-fill').style.width=(ratio*100)+'%';
+  if (t.id === r.currentId && ['running','paused'].includes(r.status)) {
+   const remaining=formatDigital(Math.max(0,t.duration-elapsed)),label=t.name+' · '+(r.status === 'paused' ? '已暂停 · ' : '')+'剩余 '+remaining;
+   if (piece.title !== label) piece.title=label;
+   const aria=t.name+'，当前任务剩余 '+remaining+'，可拖动排序';if (piece.getAttribute('aria-label') !== aria) piece.setAttribute('aria-label',aria);
+  }
+ }
+}
+
+
+function renderControls() {
+ const relay=state.mode === 'relay',t=relay ? state.relay : state.timers[state.mode];
+ const actions=$('timer-actions'),actionsSlot=$(relay ? 'relay-actions-slot' : 'default-actions-slot');
+ if (actions.parentElement !== actionsSlot) actionsSlot.append(actions);
+ $('relay-actions-slot').hidden=!relay;$('default-actions-slot').hidden=relay;
+ const deadlineLocked=state.timers.deadline.status !== 'idle',pickerLocked=deadlineLocked && !deadlineEditorOpen;
+ $('deadline-picker').hidden=pickerLocked;$('deadline-tools').hidden=!deadlineLocked;$('relay-total-label').hidden=!relay;
+ $('deadline-more').setAttribute('aria-expanded',String(deadlineEditorOpen));
+ const editorLabel=deadlineEditorOpen ? '收起目标时间' : '修改目标时间';$('deadline-more').title=editorLabel;$('deadline-more').setAttribute('aria-label',editorLabel);
+ $('duration-panel').hidden=state.mode !== 'duration';$('deadline-panel').hidden=state.mode !== 'deadline';$('relay-panel').hidden=!relay;
+ $('relay-track').hidden=!relay;
+ for (const id of ['hours','minutes','seconds']) $(id).disabled=state.timers.duration.status !== 'idle';
+ $('picker-columns').style.pointerEvents=pickerLocked ? 'none' : 'auto';$('picker-columns').style.opacity='1';
+ for (const control of [dateWheelCtrl,hourWheelCtrl,minWheelCtrl]) control?.setDisabled(pickerLocked);
+ $('return-today').disabled=pickerLocked;
+ const label=t.status === 'running' ? '暂停' : t.status === 'paused' ? '继续' : ['overtime','past'].includes(t.status) ? '完成' : '开始';
+ $('timer-start').dataset.action=t.status === 'running' ? 'pause' : 'start';
+ const path=t.status === 'running' ? pausePath : ['overtime','past'].includes(t.status) ? completePath : playPath;
+ const startIcon=path === pausePath ? 'pause' : path === completePath ? 'complete' : 'play';
+ if ($('timer-start').dataset.icon !== startIcon) {$('timer-start').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'+path+'</svg>';$('timer-start').dataset.icon=startIcon;}
+ $('timer-start').setAttribute('aria-label',label);$('timer-start').title=label;$('timer-start').disabled=relay && !state.relay.tasks.length;
+ $('timer-reset').disabled=relay && (t.status === 'idle' || !t.tasks.length);
+ $('timer-error').textContent=errors[state.mode];
+ $('interval-value').disabled=state.reminder.running;$('interval-unit').disabled=state.reminder.running;
+ const reminderLabel=state.reminder.running ? '停止提醒' : '启动提醒';
+ const reminderIcon=state.reminder.running ? 'stop' : 'play';
+ if ($('reminder-toggle').dataset.icon !== reminderIcon) {$('reminder-toggle').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'+(state.reminder.running ? '<rect x="7" y="7" width="10" height="10" rx="1"/>' : playPath)+'</svg>';$('reminder-toggle').dataset.icon=reminderIcon;}
+ $('reminder-toggle').setAttribute('aria-label',reminderLabel);$('reminder-toggle').title=reminderLabel;
+ $('reminder-toggle').setAttribute('aria-pressed',String(state.reminder.running));$('reminder-readout').hidden=!state.reminder.running;
+ const wrap=$('timer-time-wrap');
+ wrap.style.cursor=relay ? 'default' : 'pointer';wrap.tabIndex=relay ? -1 : 0;
+ if (relay) {wrap.removeAttribute('role');wrap.removeAttribute('aria-label');wrap.removeAttribute('title');}
+ else {wrap.setAttribute('role','button');wrap.setAttribute('aria-label','切换'+modeNames[state.mode]+'时间显示方式');wrap.title='点击切换精确时间';}
+ renderTabs();
+}
+
+for (const mode of MODES) $('mode-'+mode).onclick=() => {
+ finishRelayDrag(false);deadlineEditorOpen=false;state.mode=mode;renderRelay();renderControls();save();tick();
+ if (mode === 'deadline') {dateWheelCtrl.syncValue();hourWheelCtrl.syncValue();minWheelCtrl.syncValue();}
+};
+function updateRunningTimers(now) {
+ let changed=false;
+ for (const mode of ['duration','deadline']) {
+  const t=state.timers[mode];
+  if (t.status === 'running' && now >= t.end) {
+   t.status='overtime';changed=true;
+   if (!t.notified) {t.notified=true;notify(modeNames[mode]+'倒计时结束，继续计时');}
+  }
+ }
+ if (settleRelay(now)) {changed=true;renderRelay(true);}
+ const r=state.reminder;
+ if (r.running && now >= r.next) {
+  r.last=now;r.next+=(Math.floor((now-r.next)/r.interval)+1)*r.interval;notify('间隔提醒 · '+clockText(new Date(now)));changed=true;
+ }
+ if (changed) {renderControls();save();}
+}
+function addMinutesToTimer(minutes) {
+ if (state.mode !== 'duration') return;
+ const now=Date.now();updateRunningTimers(now);
+ const t=state.timers.duration;
+ if (t.status === 'idle') {
+  const h=integer('hours',0,999,true),m=integer('minutes',0,59,true),s=integer('seconds',0,59,true);
+  if ([h,m,s].includes(null)) {showError('timer','请先修正无效时长。');return;}
+  const seconds=Math.min(MAX_DURATION/1000,h*3600+m*60+s+minutes*60);
+  const values={hours:Math.floor(seconds/3600),minutes:Math.floor(seconds/60)%60,seconds:seconds%60};
+  for (const [id,value] of Object.entries(values)) {$(id).value=String(value);state.settings[id]=String(value);clearDurationInputFeedback(id);}
+ } else {
+  const add=Math.min(minutes*60000,MAX_DURATION-t.total);
+  if (add <= 0) {toast('已达到最大时长。');return;}
+  t.total+=add;
+  if (t.status === 'paused') t.remaining+=add;
+  else {t.end+=add;if (t.status === 'overtime' && t.end > now) {t.status='running';t.notified=false;}}
+  toast('已增加 '+Math.round(add/60000)+' 分钟');
+ }
+ showError('timer');renderControls();save();tick();
+}
+document.querySelectorAll('[data-add-minutes]').forEach(button => button.onclick=() => addMinutesToTimer(Number(button.dataset.addMinutes)));
+function formatSpan(ms,past=false) {
+ const round=past ? Math.floor : Math.ceil;
+ const unit=(n,label) => '<span class="num">'+n+'</span><span class="unit">'+label+'</span>';
+ const prefix=past ? '<span class="prefix-plus">+</span>' : '';
+ if (ms < 60000) return prefix+unit(Math.max(0,round(ms/1000)),'s');
+ if (ms >= 86400000) {
+  const hours=round(ms/3600000), days=Math.floor(hours/24), remainder=hours%24;
+  return prefix+unit(days,'天')+(remainder ? unit(remainder,'h') : '');
+ }
+ const minutes=round(ms/60000),hours=Math.floor(minutes/60),remainder=minutes%60;
+ return prefix+(hours ? unit(hours,'h') : '')+(remainder || !hours ? unit(remainder,'min') : '');
+}
+function formatRelayTotal(ms) {
+ const seconds=Math.max(0,Math.round(ms/1000));
+ const hours=Math.floor(seconds/3600),minutes=Math.floor(seconds%3600/60),remainder=seconds%60;
+ const unit=(n,label) => '<span class="num">'+n+'</span><span class="unit">'+label+'</span>';
+ return (hours ? unit(hours,'h') : '')+(minutes ? unit(minutes,'min') : '')+(remainder ? unit(remainder,'s') : '') || unit(0,'s');
+}
+function toggleTimeFormat() {
+ if (state.mode === 'relay') return;
+ const key=state.mode === 'deadline' ? 'deadlineCompactMode' : 'durationCompactMode';
+ state[key]=!state[key];save();tick();
+}
+$('timer-time-wrap').onclick=toggleTimeFormat;
+$('timer-time-wrap').addEventListener('keydown',event => {if (event.key === 'Enter' || event.key === ' ') {event.preventDefault();toggleTimeFormat();}});
+
+$('timer-start').onclick=() => {
+ void unlockAudio();const now=Date.now();updateRunningTimers(now);
+ if (state.mode === 'relay') {
+  const r=state.relay;
+  if (r.status === 'running') {r.elapsed=relayElapsed(now);r.startedAt=0;r.status='paused';}
+  else {
+   for (const row of $('relay-tasks').children) if (!commitRelayDuration(row,row.dataset.id)) {showError('timer','请先修正任务时长');return;}
+   for (const row of $('relay-tasks').children) showRelayTimeEditor(row,false);
+   if (r.status === 'paused') {r.startedAt=now;r.status='running';}
+   else beginRelay(now);
+  }
+  renderRelay();
+ } else {
+  const mode=state.mode,t=state.timers[mode];
+  if (t.status === 'running') {t.remaining=Math.max(0,t.end-now);t.status='paused';}
+  else if (t.status === 'paused') {t.end=now+t.remaining;t.status='running';}
+  else if (['overtime','past'].includes(t.status)) state.timers[mode]=idleTimer(mode);
+  else {
+   const value=timerValue(mode,now);
+   if (value.error) {showError('timer',value.error);return;}
+   state.timers[mode]={status:value.isPast ? 'past' : 'running',mode,end:value.end,total:value.ms,remaining:value.ms,notified:value.isPast,isPast:value.isPast};
+  }
+  if (mode === 'deadline') deadlineEditorOpen=false;
+ }
+ showError('timer');renderControls();save();tick();
+};
+$('timer-reset').onclick=() => {
+ if (state.mode === 'relay') {finishRelayDrag(false);resetRelay();renderRelay();}
+ else {state.timers[state.mode]=idleTimer(state.mode);if (state.mode === 'deadline') deadlineEditorOpen=false;}
+ showError('timer');renderControls();save();tick();
+};
+
+
+
+function finishRelayDrag(cancel=false) {
+ const drag=relayDrag;if (!drag) return;
+ const r=state.relay,now=Date.now();relayDrag=null;
+ if (drag.frame) cancelAnimationFrame(drag.frame);
+ if (drag.container.hasPointerCapture(drag.pointerId)) drag.container.releasePointerCapture(drag.pointerId);
+ drag.ghost?.remove();document.body.classList.remove('relay-dragging');
+ for (const node of document.querySelectorAll('#relay-track > *,#relay-tasks > *')) node.classList.remove('drag-slot');
+ if (cancel && drag.active) {
+  const byId=new Map(r.tasks.map(t => [t.id,t]));
+  r.tasks=drag.original.map(id => byId.get(id)).filter(Boolean).concat(r.tasks.filter(t => !drag.original.includes(t.id)));
+ }
+ if (!drag.active && drag.prePaused) {
+  r.status=drag.status;r.currentId=drag.currentId;r.elapsed=drag.elapsed;r.startedAt=now;
+  renderRelay();renderControls();save();tick();return;
+ }
+ if (drag.active && ['running','paused'].includes(drag.status)) {
+  if (cancel) {r.currentId=drag.currentId;r.elapsed=drag.elapsed;r.status=drag.status;r.startedAt=drag.status === 'running' ? now : 0;}
+  else relayContinueAfterReorder(drag.currentId,drag.elapsed,drag.status,now);
+ }
+ if (cancel && drag.active) normalizeRelayOrder();
+ if (drag.active) {
+  renderRelay(true);renderControls();save();tick();
+  setText('relay-announcement',cancel ? '已取消排序' : '任务顺序已调整');
+ }
+}
+function updateRelayDragPosition(drag) {
+ if (relayDrag !== drag || !drag.active) return;
+ drag.ghost.style.left=(drag.fromList ? drag.left : drag.x-drag.offsetX)+'px';
+ drag.ghost.style.top=(drag.y-drag.offsetY)+'px';
+ const center=drag.fromList ? drag.y-drag.offsetY+drag.height/2+scrollY-drag.scrollY : drag.x-drag.offsetX+drag.width/2;
+ let target=0;
+ while (target<drag.centers.length-1 && center>(drag.centers[target]+drag.centers[target+1])/2) target++;
+ const ids=state.relay.tasks.filter(t => relayCanMove(t.id)).map(t => t.id),index=ids.indexOf(drag.id);
+ if (index<0) {finishRelayDrag(false);return;}
+ if (target !== index) {ids.splice(target,0,ids.splice(index,1)[0]);relayApplyOrder(ids);}
+}
+function relayDragScrollFrame() {
+ const drag=relayDrag;
+ if (!drag?.active || !drag.fromList) return;
+ drag.frame=0;
+ const edge=56,dy=drag.y<edge ? -Math.ceil((edge-drag.y)/4) : drag.y>innerHeight-edge ? Math.ceil((drag.y-innerHeight+edge)/4) : 0;
+ if (dy) {window.scrollBy(0,Math.max(-14,Math.min(14,dy)));updateRelayDragPosition(drag);}
+ drag.frame=requestAnimationFrame(relayDragScrollFrame);
+}
+function setupRelayDrag(container,fromList=false) {
+ container.addEventListener('pointerdown',event => {
+  if (event.button !== 0 || event.isPrimary === false || relayDrag) return;
+  const handle=event.target.closest(fromList ? '.relay-drag-handle' : '.relay-piece');
+  const item=fromList ? handle?.closest('.relay-task') : handle;
+  if (!item || !relayCanMove(item.dataset.id) || handle.disabled) return;
+  event.preventDefault();handle.focus({preventScroll:true});
+  const rect=item.getBoundingClientRect(),r=state.relay;
+  const movable=[...container.children].filter(node => relayCanMove(node.dataset.id));
+  relayDrag={id:item.dataset.id,container,fromList,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,offsetX:event.clientX-rect.left,offsetY:event.clientY-rect.top,left:rect.left,width:rect.width,height:rect.height,scrollY,active:false,ghost:null,frame:0,original:state.relay.tasks.map(t => t.id),status:r.status,currentId:r.currentId,elapsed:r.status === 'running' ? relayElapsed() : r.elapsed,prePaused:false,centers:movable.map(node => {const box=node.getBoundingClientRect();return fromList ? box.top+box.height/2 : box.left+box.width/2;})};
+  container.setPointerCapture(event.pointerId);
+  if (r.status === 'running') {relayDrag.prePaused=true;r.elapsed=relayDrag.elapsed;r.startedAt=0;r.status='paused';renderRelay();renderControls();save();tick();}
+ });
+ container.addEventListener('pointermove',event => {
+  const drag=relayDrag;if (!drag || drag.container !== container || event.pointerId !== drag.pointerId) return;
+  drag.x=event.clientX;drag.y=event.clientY;
+  if (!drag.active && Math.hypot(drag.x-drag.startX,drag.y-drag.startY)<5) return;
+  event.preventDefault();
+  if (!drag.active) {
+   const item=[...container.children].find(node => node.dataset.id === drag.id);
+   if (!item || !relayCanMove(drag.id)) {finishRelayDrag(false);return;}
+   const r=state.relay,now=Date.now();
+   if (!drag.prePaused && ['running','paused'].includes(r.status)) {
+    drag.status=r.status;drag.currentId=r.currentId;drag.elapsed=r.status === 'running' ? relayElapsed(now) : r.elapsed;
+    if (r.status === 'running') {const current=relayCurrent();if (current && drag.elapsed>=current.duration) {settleRelay(now);return;}r.elapsed=drag.elapsed;r.startedAt=0;r.status='paused';}
+   }
+   drag.active=true;
+   if (!drag.prePaused && ['running','paused'].includes(drag.status)) {renderRelay();renderControls();save();tick();}
+   drag.ghost=item.cloneNode(true);drag.ghost.classList.add('relay-drag-ghost');
+   if (fromList) drag.ghost.classList.add('relay-row-drag-ghost');
+   drag.ghost.setAttribute('aria-hidden','true');drag.ghost.inert=true;drag.ghost.tabIndex=-1;
+   drag.ghost.removeAttribute('id');for (const node of drag.ghost.querySelectorAll('[id]')) node.removeAttribute('id');
+   drag.ghost.style.width=drag.width+'px';drag.ghost.style.height=drag.height+'px';document.body.append(drag.ghost);
+   item.classList.add('drag-slot');document.body.classList.add('relay-dragging');
+   if (fromList) drag.frame=requestAnimationFrame(relayDragScrollFrame);
+  }
+  updateRelayDragPosition(drag);
+ });
+ container.addEventListener('pointerup',event => {if (relayDrag?.container === container && relayDrag.pointerId === event.pointerId) finishRelayDrag(false);});
+ container.addEventListener('pointercancel',() => {if (relayDrag?.container === container) finishRelayDrag(true);});
+ container.addEventListener('lostpointercapture',() => {if (relayDrag?.container === container) finishRelayDrag(true);});
+ container.addEventListener('keydown',event => {
+  const handle=event.target.closest(fromList ? '.relay-drag-handle' : '.relay-piece');
+  const item=fromList ? handle?.closest('.relay-task') : handle,keys=fromList ? ['ArrowUp','ArrowDown'] : ['ArrowLeft','ArrowRight'];
+  if (!item || !keys.includes(event.key)) return;
+  event.preventDefault();moveRelayTask(item.dataset.id,event.key === keys[0] ? -1 : 1,fromList);
+ });
+}
+setupRelayDrag($('relay-track'));
+setupRelayDrag($('relay-tasks'),true);
+
+document.addEventListener('keydown',event => {if (event.key === 'Escape' && relayDrag) {event.preventDefault();finishRelayDrag(true);}});
+window.addEventListener('resize',() => {
+ finishRelayDrag(true);
+ for (const node of document.querySelectorAll('#relay-track > *,#relay-tasks > *')) for (const animation of node.getAnimations()) animation.cancel();
+});
+matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',event => {
+ if (event.matches) for (const node of document.querySelectorAll('#relay-track > *,#relay-tasks > *')) for (const animation of node.getAnimations()) animation.cancel();
+});
+$('relay-add').onclick=() => {
+ const now=Date.now();updateRunningTimers(now);const r=state.relay;
+ if (r.status === 'done') resetRelay();
+ const id='task-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+ const used=new Set(r.tasks.map(t => t.color)),color=relayPalette.find(color => !used.has(color)) || relayPalette[r.tasks.length%relayPalette.length];
+ r.tasks.push(newTask(id,'任务'+(r.tasks.length+1),300000,color));
+ renderRelay(true);renderControls();save();tick();
+ const row=[...$('relay-tasks').children].find(node => node.dataset.id === id);row?.querySelector('.relay-name').focus();
+};
+$('relay-pause-between').onclick=() => {updateRunningTimers(Date.now());state.relay.pauseBetween=!state.relay.pauseBetween;renderRelay();save();};
+$('relay-loop').onclick=() => {updateRunningTimers(Date.now());state.relay.loop=!state.relay.loop;renderRelay();save();};
+
+$('reminder-toggle').onclick=() => {
+ void unlockAudio();const r=state.reminder;
+ if (r.running) {r.running=false;r.next=0;}
+ else {const value=intervalValue();if (value.error) {showError('reminder',value.error);return;}r.running=true;r.interval=value.ms;r.next=Date.now()+value.ms;}
+ showError('reminder');renderControls();save();tick();
+};
+for (const [id,max] of [['hours',999],['minutes',59],['seconds',59]]) {
+ const input=$(id),digits=String(max).length,hint=id === 'hours' ? '限 0–999 整数' : '限 0–59 整数';
+ let composing=false,selectionBeforeEdit=null;
+ function normalizeDurationDigits(raw) {
+  const text=raw.normalize('NFKC').trim();
+  if (!/^\d*$/.test(text)) return null;
+  const value=text.replace(/^0+(?=\d)/,'');
+  return value.length<=digits && Number(value || 0)<=max ? value : null;
+ }
+ function rejectEdit() {
+  clearDurationInputFeedback(id);input.closest('.segment').dataset.rejected='true';
+  durationRejectionJobs[id]=setTimeout(() => clearDurationInputFeedback(id),650);
+ }
+ function acceptEdit() {
+  const raw=input.value,value=normalizeDurationDigits(raw),caret=input.selectionStart;
+  if (value === null) {
+   input.value=state.settings[id];
+   if (selectionBeforeEdit) input.setSelectionRange(Math.min(selectionBeforeEdit[0],input.value.length),Math.min(selectionBeforeEdit[1],input.value.length));
+   rejectEdit();
+  } else {
+   input.value=value;state.settings[id]=value;clearDurationInputFeedback(id);
+   if (raw !== value && document.activeElement === input) {const next=Math.max(0,(caret ?? raw.length)-(raw.length-value.length));input.setSelectionRange(next,next);}
+  }
+  selectionBeforeEdit=null;showError('timer');queueSave();tick();
+ }
+ input.value=normalizeDurationDigits(state.settings[id]) ?? '';state.settings[id]=input.value;
+ input.title=hint;input.setAttribute('aria-description',hint);
+ input.addEventListener('beforeinput',event => {
+  selectionBeforeEdit=[input.selectionStart ?? input.value.length,input.selectionEnd ?? input.value.length];
+  if (composing || event.isComposing || !event.inputType.startsWith('insert') || event.data === null) return;
+  const candidate=input.value.slice(0,selectionBeforeEdit[0])+event.data+input.value.slice(selectionBeforeEdit[1]);
+  if (normalizeDurationDigits(candidate) === null) {event.preventDefault();rejectEdit();selectionBeforeEdit=null;}
+ });
+ input.addEventListener('input',event => {if (!composing && !event.isComposing) acceptEdit();});
+ input.addEventListener('compositionstart',() => {composing=true;});
+ input.addEventListener('compositionend',() => {composing=false;acceptEdit();});
+}
+$('interval-value').value=state.settings.interval;$('interval-unit').value=state.settings.unit;
+$('interval-value').addEventListener('input',() => {state.settings.interval=$('interval-value').value;showError('reminder');queueSave();tick();});
+$('interval-unit').addEventListener('change',() => {state.settings.unit=$('interval-unit').value;showError('reminder');queueSave();tick();});
+document.querySelectorAll('input[type=number]').forEach(input => input.addEventListener('wheel',event => {if (document.activeElement === input) event.preventDefault();},{passive:false}));
+
+
+function tick() {
+ const now=Date.now(),date=new Date(now);ensureCalendar(date);updateRunningTimers(now);
+ setText('clock',clockText(date,state.clockShowSeconds));
+ $('clock').setAttribute('aria-label','当前时间 '+clockText(date,state.clockShowSeconds)+'，点击切换秒数');
+ setText('clock-date',(date.getMonth()+1)+'月'+date.getDate()+'日 · '+['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][date.getDay()]);
+ const relay=state.mode === 'relay',t=relay ? state.relay : state.timers[state.mode],section=document.querySelector('.timer');
+ const status=t.status === 'paused' ? '已暂停' : '';
+ let ratio=0,end='',readout='',plain='',past=false,remaining=0;
+ for (const [name,value] of [['is-running',t.status === 'running'],['is-paused',t.status === 'paused'],['is-overtime',!relay && t.status === 'overtime'],['is-past',!relay && t.status === 'past'],['is-relay',relay]]) section.classList.toggle(name,value);
+ if (relay) {
+  remaining=state.relay.tasks.reduce((sum,task) => sum+task.duration,0);readout=formatRelayTotal(remaining);setHTML('timer-readout',readout);plain=$('timer-readout').textContent;
+  $('timer-readout').classList.toggle('long',plain.length>8);
+  $('timer-readout').setAttribute('aria-label','任务接力共需 '+plain);
+  if (relayTotalChanged) {const totalReadout=$('timer-readout');totalReadout.classList.remove('relay-total-updated');void totalReadout.offsetWidth;totalReadout.classList.add('relay-total-updated');relayTotalChanged=false;}
+  renderRelayProgress(now);
+ } else {
+  if (t.status === 'running') {remaining=Math.max(0,t.end-now);ratio=remaining/t.total*100;end='结束于 '+endText(t.end);}
+  else if (t.status === 'paused') {remaining=t.remaining;ratio=t.total ? remaining/t.total*100 : 0;}
+  else if (['overtime','past'].includes(t.status)) {remaining=Math.max(0,now-t.end);past=true;}
+  else {
+   const value=timerValue(state.mode,now);
+   if (!value.error) {remaining=value.ms;past=value.isPast;ratio=past ? 0 : 100;end=past ? '' : '预计结束 '+endText(value.end);}
+  }
+  const compact=state.mode === 'deadline' ? state.deadlineCompactMode : state.durationCompactMode;
+  readout=compact ? formatSpan(remaining,past) : (past ? '+' : '')+formatDigital(remaining,!past);
+  setHTML('timer-readout',readout);plain=$('timer-readout').textContent;
+  $('timer-readout').classList.toggle('long',plain.length>8);
+  $('timer-readout').setAttribute('aria-label',(past ? '已过去时间 ' : '剩余时间 ')+plain);
+ }
+ $('timer-readout').classList.toggle('past-mode',!relay && past);
+ $('timer-readout').classList.toggle('overtime-mode',!relay && t.status === 'overtime');
+ setText('timer-status',status);setText('timer-end',end);
+ $('timer-progress').hidden=relay;
+ ratio=Math.max(0,Math.min(100,ratio));$('progress-fill').style.width=ratio+'%';$('timer-progress').setAttribute('aria-valuenow',String(Math.round(ratio)));
+ $('wave-front').style.display=!relay && ['running','paused'].includes(t.status) && ratio>0 ? 'block' : 'none';
+ if (state.reminder.running) setText('reminder-readout',formatDigital(Math.max(0,state.reminder.next-now)));
+ renderTabs();
+ let title='计时器';
+ if (t.status !== 'idle') title=plain+' · '+modeNames[state.mode];
+ else {
+  const background=['duration','deadline'].find(mode => state.timers[mode].status === 'running');
+  if (background) title=formatDigital(Math.max(0,state.timers[background].end-now))+' · '+modeNames[background];
+  else if (state.relay.status === 'running') title=formatDigital(relayRemaining(now))+' · 任务接力';
+  else if (state.reminder.running) title=formatDigital(Math.max(0,state.reminder.next-now))+' · 提醒';
+ }
+ if (document.title !== title) document.title=title;
+}
+initPickers();renderSound();renderRelay();renderControls();tick();
+if (state.mode === 'deadline') {dateWheelCtrl.syncValue();hourWheelCtrl.syncValue();minWheelCtrl.syncValue();}
+save();setInterval(tick,250);
+document.addEventListener('visibilitychange',() => {if (!document.hidden) tick();});
+window.addEventListener('pageshow',tick);
+})();
+
+</script>
+</body></html>
