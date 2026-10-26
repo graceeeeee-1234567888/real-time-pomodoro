@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>计时器</title>
+<style>
+:root{--bg:#f8f9f6;--ink:#23392e;--muted:#69766d;--line:#dce2da;--accent:#315a43;--soft:#e8eee6;--error:#a53d32}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;touch-action:manipulation}
+button:disabled{cursor:default;opacity:.45}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+button{display:inline-flex;justify-content:center;align-items:center;gap:8px;min-height:44px;border:1px solid transparent;background:transparent;border-radius:10px;padding:10px 16px;transition:background .15s,color .15s}
+button:hover:not(:disabled){background:var(--soft)}
+button svg{width:18px;height:18px;flex-shrink:0}
+input,select{min-width:0;min-height:44px;border:1px solid var(--line);background:transparent;border-radius:8px;padding:8px 10px}
+input:disabled,select:disabled{color:var(--muted)}
+input[aria-invalid=true]{border-color:var(--error)}
+input[type=number]{appearance:textfield;-moz-appearance:textfield;font-variant-numeric:tabular-nums}
+input::-webkit-inner-spin-button,input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+[hidden]{display:none!important}
+h1,p{margin:0}
+.shell{width:min(100% - 48px,780px);margin:auto}
+.top{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:38px 0 28px;border-bottom:1px solid var(--line)}
+h1{font-size:18px;font-weight:600;letter-spacing:.06em}
+.date{margin-top:4px;font-size:12px;color:var(--muted)}
+.header-right{display:flex;align-items:center;gap:18px}
+.clock{padding:0 4px;font-size:42px;font-weight:700;line-height:1.2;letter-spacing:-.025em;font-variant-numeric:tabular-nums;min-width:184px}
+.sound-tools{display:flex;align-items:center;gap:0}
+.icon-button{width:44px;padding:10px;color:var(--muted)}
+.icon-button[aria-pressed=true]{color:var(--accent)}
+.sound-test{font-size:12px;color:var(--muted);padding:8px;min-width:44px}
+.timer{padding:46px 0 42px;text-align:center}
+.tabs{display:inline-flex;padding:4px;background:var(--soft);border-radius:12px;gap:4px}
+.tabs button{min-width:88px;min-height:38px;padding:6px 24px;border-radius:8px;color:var(--muted)}
+.tabs button[aria-pressed=true]{background:var(--bg);color:var(--ink)}
+.readout{position:relative;isolation:isolate;max-width:560px;min-height:210px;margin:32px auto 28px;padding:34px 16px;display:flex;flex-direction:column;justify-content:center}
+.readout .timer-time,.readout .timer-status{position:relative;z-index:1;pointer-events:none}
+.timer-time{font-size:clamp(58px,13vw,116px);line-height:1.1;font-weight:700;letter-spacing:-.055em;font-variant-numeric:tabular-nums;white-space:nowrap}
+.timer-time.long{font-size:clamp(38px,9vw,80px)}
+.timer-time.overtime{color:#396381}
+.timer-status{color:var(--muted);font-size:12px;min-height:18px;margin-top:12px}
+.progress{position:absolute;inset:0;z-index:0;border:1px solid var(--line);background:#f1f4ee;overflow:hidden;border-radius:0}
+.progress-fill{position:relative;width:100%;height:100%;background:#dce8d9;transition:width .24s linear;overflow:hidden}
+.progress-fill::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 20%,#ffffff70 50%,transparent 80%);transform:translateX(-100%);animation:progress-flow 2.4s linear infinite;animation-play-state:paused;opacity:0}
+.timer.is-running .progress-fill::after{animation-play-state:running;opacity:1}
+.timer.is-paused .progress-fill::after{opacity:.35}
+.timer.is-overtime .progress{background:#edf1f4;border-color:#d4dee5}
+@keyframes progress-flow{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.settings{max-width:410px;margin:auto}
+.duration-fields{display:flex;justify-content:center;gap:12px}
+.segment{display:flex;align-items:center;border:1px solid var(--line);border-radius:8px;padding-right:12px;min-width:0;flex:1}
+.segment:focus-within{outline:2px solid var(--accent);outline-offset:3px}
+.segment:has(input[aria-invalid=true]){border-color:var(--error)}
+.segment input{width:100%;text-align:center;font-size:18px;border:0;outline:none;min-height:44px;padding:6px 4px 6px 12px;background:transparent}
+.segment input:focus-visible{outline:none}
+.segment span{font-size:12px;color:var(--muted)}
+.presets{display:flex;justify-content:center;gap:8px;margin-top:12px}
+.presets button{min-height:36px;padding:5px 14px;font-size:12px;color:var(--muted);border-radius:18px}
+.presets button[aria-pressed=true]{background:var(--soft);color:var(--accent)}
+.deadline-fields{display:flex;gap:10px;align-items:center}
+.deadline-fields input[type=date]{width:100%;font-size:14px;flex:1.9}
+.deadline-time{display:flex;align-items:center;gap:3px;flex:1;min-width:0}
+.deadline-time input{width:100%;text-align:center;padding:8px 2px;font-size:16px}
+.time-separator{color:var(--muted)}
+.seconds-toggle{padding:6px 8px;font-size:12px;color:var(--muted);min-width:44px;border:1px solid var(--line)}
+.seconds-toggle[aria-pressed=true]{background:var(--soft);border-color:var(--soft);color:var(--accent)}
+.error{color:var(--error);font-size:12px;text-align:center;margin-top:10px}
+.error:empty{display:none}
+.actions{display:flex;justify-content:center;gap:10px;margin-top:26px}
+.actions button{width:56px;min-width:56px;height:56px;min-height:56px;border-radius:50%;padding:0}
+.actions button svg{width:23px;height:23px}
+.primary{background:var(--accent);color:#fff}
+.primary:hover:not(:disabled){background:#254733;color:#fff}
+.secondary{border-color:var(--line);color:var(--muted)}
+.end-time{font-weight:600;margin-top:14px;color:var(--muted);font-size:12px;min-height:18px;font-variant-numeric:tabular-nums}
+.reminder{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:24px 0}
+.reminder-row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.reminder-fields{display:flex;align-items:center;gap:9px}
+.reminder-fields label,.reminder-fields .suffix{color:var(--muted);white-space:nowrap}
+.reminder-fields input{width:62px;text-align:center;padding:8px 4px}
+.reminder-fields select{width:78px;padding:8px 5px}
+.reminder-controls{display:flex;gap:12px;align-items:center;margin-left:auto}
+.reminder-countdown{font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.reminder-toggle{border:1px solid var(--line);font-size:13px;white-space:nowrap}
+.reminder-toggle[aria-pressed=true]{background:var(--soft);border-color:var(--soft);color:var(--accent)}
+footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
+.toasts{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);z-index:10;pointer-events:none;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--ink);color:white;border-radius:10px;padding:12px 18px;font-size:13px;text-align:center}
+@media(max-width:560px){
+ .shell{width:calc(100% - 36px)}
+ .top{padding:24px 0 20px;gap:8px}
+ h1{font-size:16px}
+ .header-right{gap:4px}
+ .clock{font-size:30px;min-width:136px}
+ .sound-test{display:none}
+ .timer{padding:34px 0 30px}
+ .readout{min-height:178px;margin:26px auto 24px;padding:28px 10px}
+ .timer-time{font-size:clamp(62px,18vw,96px)}
+ .timer-time.long{font-size:clamp(33px,10.5vw,60px)}
+ .settings{max-width:360px}
+ .duration-fields{gap:8px}
+ .deadline-fields{flex-wrap:wrap;gap:8px}
+ .deadline-fields input[type=date]{flex:1 0 100%}
+ .deadline-time{flex:1}
+ .deadline-time input{min-width:44px}
+ .seconds-toggle{min-width:48px}
+ .reminder-row{gap:14px}
+ .reminder-fields{gap:6px}
+ .reminder-controls{gap:8px}
+ .reminder-toggle{padding:8px 12px}
+ .date{font-size:11px}
+}
+@media(max-width:360px){.reminder-controls{width:100%;justify-content:flex-end}.header-right{gap:0}.clock{font-size:26px;min-width:120px}.icon-button{width:40px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header class="top">
+ <div><h1>计时器</h1><p class="date" id="clock-date"></p></div>
+ <div class="header-right">
+  <button class="clock" id="clock" aria-label="当前时间，点击切换秒数显示" title="点击切换秒数显示">--:--:--</button>
+  <div class="sound-tools">
+   <button class="icon-button" id="sound" aria-label="关闭声音" aria-pressed="true" title="关闭声音"></button>
+   <button class="sound-test" id="test-sound" title="试听提示音">试听</button>
+  </div>
+ </div>
+</header>
+<main>
+ <section class="timer" aria-label="倒计时">
+  <div class="tabs" role="group" aria-label="计时方式">
+   <button id="mode-duration" aria-pressed="true">时长</button>
+   <button id="mode-deadline" aria-pressed="false">定点</button>
+  </div>
+  <div class="readout">
+   <div class="progress" id="timer-progress" role="progressbar" aria-label="剩余时间比例" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"><div class="progress-fill" id="progress-fill"></div></div>
+   <div class="timer-time" id="timer-readout" role="timer" aria-label="剩余时间" aria-live="off">25:00</div>
+   <p class="timer-status" id="timer-status" role="status">待开始</p>
+  </div>
+  <div class="settings">
+   <div id="duration-panel">
+    <div class="duration-fields">
+     <div class="segment"><input id="hours" placeholder="0" type="number" inputmode="numeric" min="0" max="999" step="1" value="0" aria-label="时长：小时" aria-describedby="timer-error"><span aria-hidden="true">时</span></div>
+     <div class="segment"><input id="minutes" placeholder="0" type="number" inputmode="numeric" min="0" max="59" step="1" value="25" aria-label="时长：分钟" aria-describedby="timer-error"><span aria-hidden="true">分</span></div>
+     <div class="segment"><input id="seconds" placeholder="0" type="number" inputmode="numeric" min="0" max="59" step="1" value="0" aria-label="时长：秒" aria-describedby="timer-error"><span aria-hidden="true">秒</span></div>
+    </div>
+    <div class="presets" role="group" aria-label="快捷时长">
+     <button data-minutes="5" aria-pressed="false">5 分钟</button>
+     <button data-minutes="25" aria-pressed="true">25 分钟</button>
+     <button data-minutes="50" aria-pressed="false">50 分钟</button>
+    </div>
+   </div>
+   <div id="deadline-panel" hidden>
+    <div class="deadline-fields">
+     <input id="deadline-date" type="date" min="1000-01-01" max="9999-12-31" required aria-label="目标日期" aria-describedby="timer-error">
+     <div class="deadline-time">
+      <input id="deadline-hour" type="number" inputmode="numeric" min="0" max="23" step="1" aria-label="目标小时" aria-describedby="timer-error">
+      <span class="time-separator" aria-hidden="true">:</span>
+      <input id="deadline-minute" type="number" inputmode="numeric" min="0" max="59" step="1" aria-label="目标分钟" aria-describedby="timer-error">
+      <span class="time-separator deadline-seconds" aria-hidden="true" hidden>:</span>
+      <input class="deadline-seconds" id="deadline-second" type="number" inputmode="numeric" min="0" max="59" step="1" aria-label="目标秒数" aria-describedby="timer-error" hidden>
+     </div>
+     <button class="seconds-toggle" id="toggle-deadline-seconds" aria-pressed="false" aria-controls="deadline-second" title="显示秒数输入">秒</button>
+    </div>
+   </div>
+   <p class="error" id="timer-error" role="alert"></p>
+  </div>
+  <div class="actions">
+   <button class="primary" id="timer-start" aria-label="开始" title="开始"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg></button>
+   <button class="secondary" id="timer-reset" aria-label="重置" title="重置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11a9 9 0 1 1 2.5 7M3 4v7h7"/></svg></button>
+  </div>
+  <p class="end-time" id="timer-end"></p>
+ </section>
+ <section class="reminder" aria-label="间隔提醒">
+  <div class="reminder-row">
+   <div class="reminder-fields">
+    <label for="interval-value">每</label>
+    <input id="interval-value" type="number" inputmode="numeric" min="1" max="999" step="1" value="5" aria-label="提醒间隔" aria-describedby="reminder-error">
+    <select id="interval-unit" aria-label="提醒间隔单位"><option value="1000">秒</option><option value="60000" selected>分钟</option><option value="3600000">小时</option></select>
+    <span class="suffix">提醒</span>
+   </div>
+   <div class="reminder-controls">
+    <span class="reminder-countdown" id="reminder-readout" role="timer" aria-label="距下次提醒" aria-live="off" hidden></span>
+    <button class="reminder-toggle" id="reminder-toggle" aria-pressed="false">启动提醒</button>
+   </div>
+  </div>
+  <p class="error" id="reminder-error" role="alert"></p>
+ </section>
+</main>
+<footer id="page-note">提醒需保持页面打开。</footer>
+</div>
+<div class="toasts" id="toasts" role="status" aria-live="polite" aria-atomic="false"></div>
+<script>
+'use strict';
+(() => {
+const $ = id => document.getElementById(id);
+const KEY = 'adhd-timer-v1';
+const MAX_MS = (999 * 3600 + 59 * 60 + 59) * 1000;
+const pad = n => String(n).padStart(2, '0');
+const dateValue = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const clockText = (d, seconds=true) => `${pad(d.getHours())}:${pad(d.getMinutes())}${seconds ? ':'+pad(d.getSeconds()) : ''}`;
+const format = (ms, roundUp=true) => {
+ const sec = Math.max(0, (roundUp ? Math.ceil : Math.floor)(ms / 1000));
+ const hours = Math.floor(sec / 3600);
+ return `${hours ? pad(hours)+':' : ''}${pad(Math.floor(sec/60)%60)}:${pad(sec%60)}`;
+};
+const endText = ms => {
+ const d = new Date(ms), today = new Date();
+ const prefix = dateValue(d) === dateValue(today) ? '' : `${d.getFullYear() === today.getFullYear() ? '' : d.getFullYear()+'年'}${d.getMonth()+1}月${d.getDate()}日 `;
+ return prefix + clockText(d);
+};
+const idleTimer = mode => ({status:'idle',mode,end:0,total:0,remaining:0,notified:false});
+const validNumber = (n, min, max) => typeof n === 'number' && Number.isFinite(n) && n >= min && n <= max;
+const next = new Date(Date.now()+3600000);
+const state = {
+ sound:true,showSeconds:true,showDlSeconds:false,mode:'duration',
+ settings:{hours:'0',minutes:'25',seconds:'0',date:dateValue(next),hour:pad(next.getHours()),minute:pad(next.getMinutes()),second:'0',interval:'5',unit:'60000'},
+ timer:idleTimer('duration'),reminder:{running:false,interval:300000,next:0,last:0}
+};
+// Treat saved data as untrusted; recover valid settings independently.
+try {
+ const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+ if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+  for (const key of ['sound','showSeconds','showDlSeconds']) if (typeof saved[key] === 'boolean') state[key] = saved[key];
+  if (['duration','deadline'].includes(saved.mode)) state.mode = saved.mode;
+  for (const key of Object.keys(state.settings)) {
+   const value = saved.settings?.[key];
+   if (typeof value === 'string' && value.length <= 16) state.settings[key] = value;
+  }
+  if (!saved.version && saved.settings) {
+   const s = saved.settings;
+   if ([s.dlYear,s.dlMonth,s.dlDay].every(v => typeof v === 'string' && /^\d{1,4}$/.test(v))) state.settings.date = `${s.dlYear}-${pad(Number(s.dlMonth))}-${pad(Number(s.dlDay))}`;
+   for (const [key,oldKey] of [['hour','dlHour'],['minute','dlMinute'],['second','dlSecond']]) if (typeof s[oldKey] === 'string' && s[oldKey].length <= 4) state.settings[key] = s[oldKey];
+  }
+  const t = saved.timer;
+  if (t && ['running','paused','overtime'].includes(t.status) && ['duration','deadline'].includes(t.mode)
+   && validNumber(t.total,1,t.mode === 'deadline' ? 8640000000000000 : MAX_MS) && validNumber(t.remaining,0,t.total)
+   && validNumber(t.end,1,8640000000000000) && !(t.mode === 'deadline' && t.status === 'paused')) {
+   state.timer = {status:t.status,mode:t.mode,end:t.end,total:t.total,remaining:t.remaining,notified:t.notified === true};
+   state.mode = t.mode;
+  }
+  const r = saved.reminder;
+  if (r && r.running === true && validNumber(r.interval,1000,999*3600000) && validNumber(r.next,1,8640000000000000)) {
+   state.reminder = {running:true,interval:r.interval,next:r.next,last:validNumber(r.last,0,Date.now()) ? r.last : 0};
+  }
+ }
+} catch { /* A blocked store or broken JSON must not stop the timer. */ }
+let saveJob;
+function save() {
+ clearTimeout(saveJob);
+ try {
+  localStorage.setItem(KEY,JSON.stringify({version:2,...state}));
+  $('page-note').textContent = '提醒需保持页面打开。';
+ } catch { $('page-note').textContent = '当前浏览器无法保存；刷新会丢失计时。提醒需保持页面打开。'; }
+}
+function queueSave() { clearTimeout(saveJob); saveJob = setTimeout(save,180); }
+window.addEventListener('pagehide',save);
+const inputMap = {'hours':'hours','minutes':'minutes','seconds':'seconds','deadline-date':'date','deadline-hour':'hour','deadline-minute':'minute','deadline-second':'second','interval-value':'interval','interval-unit':'unit'};
+for (const [id,key] of Object.entries(inputMap)) $(id).value = state.settings[key];
+function toast(message) {
+ const item = document.createElement('div');
+ item.className = 'toast'; item.textContent = message;
+ // Keep delayed or repeated reminders from flooding the screen.
+ while ($('toasts').children.length >= 2) $('toasts').firstElementChild.remove();
+ $('toasts').append(item);
+ setTimeout(() => item.remove(),4500);
+}
+let audio;
+async function unlockAudio() {
+ if (!state.sound) return false;
+ try {
+  const Audio = window.AudioContext || window.webkitAudioContext;
+  if (!Audio) return false;
+  if (!audio || audio.state === 'closed') audio = new Audio();
+  if (audio.state !== 'running') await audio.resume();
+  return audio.state === 'running';
+ } catch { return false; }
+}
+function chime() {
+ if (!state.sound || !audio || audio.state !== 'running') return false;
+ try {
+  const start = audio.currentTime;
+  [659.25,784].forEach((hz,i) => {
+   const osc = audio.createOscillator(), gain = audio.createGain(), at = start + i*.22;
+   osc.type = 'sine'; osc.frequency.value = hz;
+   gain.gain.setValueAtTime(0,at);
+   gain.gain.linearRampToValueAtTime(.12,at+.025);
+   gain.gain.exponentialRampToValueAtTime(.001,at+.55);
+   osc.connect(gain); gain.connect(audio.destination);
+   osc.onended = () => { osc.disconnect(); gain.disconnect(); };
+   osc.start(at); osc.stop(at+.6);
+  });
+  return true;
+ } catch { return false; }
+}
+function notify(message) { const played = chime(); toast(message + (state.sound && !played ? ' · 点击声音按钮开启提示音' : '')); }
+const speaker = '<path d="M11 5 6 9H3v6h3l5 4z"/>';
+function renderSound() {
+ $('sound').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${speaker}${state.sound ? '<path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>' : '<path d="m16 9 6 6m0-6-6 6"/>'}</svg>`;
+ $('sound').setAttribute('aria-pressed',String(state.sound));
+ $('sound').setAttribute('aria-label',state.sound ? '关闭声音' : '开启声音');
+ $('sound').title = state.sound ? '关闭声音' : '开启声音';
+}
+$('sound').onclick = async () => {
+ state.sound = !state.sound; renderSound(); save();
+ if (state.sound && !await unlockAudio()) toast('声音暂不可用，请点击试听重试。');
+};
+$('test-sound').onclick = async () => {
+ if (!state.sound) { toast('请先开启声音。'); return; }
+ if (!await unlockAudio() || !chime()) toast('当前浏览器无法播放提示音。');
+};
+// A restored timer needs a fresh gesture before browsers will allow audio.
+const unlockOnGesture = () => { void unlockAudio(); };
+document.addEventListener('pointerdown',unlockOnGesture,{once:true});
+document.addEventListener('keydown',unlockOnGesture,{once:true});
+$('clock').onclick = () => { state.showSeconds = !state.showSeconds; save(); tick(); };
+function integer(id,min,max,emptyIsZero=false) {
+ const input = $(id), raw = input.value.trim();
+ // Invalid partial number input also has an empty value; do not mistake it for a blank.
+ if (input.validity.badInput) return null;
+ if (raw === '' && emptyIsZero) return 0;
+ return /^\d+$/.test(raw) && Number(raw) >= min && Number(raw) <= max ? Number(raw) : null;
+}
+function timerValue(now=Date.now()) {
+ if (state.mode === 'duration') {
+  const h = integer('hours',0,999,true), m = integer('minutes',0,59,true), s = integer('seconds',0,59,true);
+  if ([h,m,s].includes(null)) return {error:'请输入有效时长：时 0–999，分和秒 0–59。'};
+  const ms = (h*3600+m*60+s)*1000;
+  return ms ? {ms,end:now+ms} : {error:'总时长至少为 1 秒，留空按 0 计算。'};
+ }
+ const raw = $('deadline-date').value;
+ if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) return {error:'请选择完整的目标日期。'};
+ const [year,month,day] = raw.split('-').map(Number);
+ const hour = integer('deadline-hour',0,23), minute = integer('deadline-minute',0,59);
+ const second = state.showDlSeconds ? integer('deadline-second',0,59) : 0;
+ if (year < 1000 || [hour,minute,second].includes(null)) return {error:'请输入有效日期和时刻：时 0–23，分和秒 0–59。'};
+ const target = new Date(year,month-1,day,hour,minute,second,0);
+ if (target.getFullYear() !== year || target.getMonth() !== month-1 || target.getDate() !== day || target.getHours() !== hour || target.getMinutes() !== minute || target.getSeconds() !== second) return {error:'该日期或时刻不存在，请重新设置。'};
+ const end = target.getTime(), ms = end-now;
+ if (ms <= 0) return {error:'请选择未来的时刻。'};
+ return {ms,end};
+}
+function intervalValue() {
+ const value = integer('interval-value',1,999), unit = Number($('interval-unit').value);
+ return value !== null && [1000,60000,3600000].includes(unit) ? {ms:value*unit} : {error:'提醒间隔请输入 1–999 的整数。'};
+}
+function showError(type,message='') {
+ $(type+'-error').textContent = message;
+ const fields = type === 'timer' ? (state.mode === 'duration' ? ['hours','minutes','seconds'] : ['deadline-date','deadline-hour','deadline-minute',...(state.showDlSeconds ? ['deadline-second'] : [])]) : ['interval-value'];
+ for (const id of fields) $(id).setAttribute('aria-invalid',String(Boolean(message)));
+}
+const timerInputs = ['hours','minutes','seconds','deadline-date','deadline-hour','deadline-minute','deadline-second'];
+function renderControls() {
+ const t = state.timer, locked = t.status !== 'idle', deadline = state.mode === 'deadline';
+ $('duration-panel').hidden = deadline; $('deadline-panel').hidden = !deadline;
+ for (const mode of ['duration','deadline']) { $('mode-'+mode).setAttribute('aria-pressed',String(state.mode === mode)); $('mode-'+mode).disabled = locked; }
+ for (const id of timerInputs) $(id).disabled = locked;
+ document.querySelectorAll('[data-minutes]').forEach(button => {
+  button.disabled = locked;
+  button.setAttribute('aria-pressed',String(integer('hours',0,999,true) === 0 && integer('minutes',0,59,true) === Number(button.dataset.minutes) && integer('seconds',0,59,true) === 0));
+ });
+ document.querySelectorAll('.deadline-seconds').forEach(el => el.hidden = !state.showDlSeconds);
+ $('toggle-deadline-seconds').disabled = locked;
+ $('toggle-deadline-seconds').setAttribute('aria-pressed',String(state.showDlSeconds));
+ $('toggle-deadline-seconds').title = state.showDlSeconds ? '隐藏秒数输入，按整分计时' : '显示秒数输入';
+ $('timer-start').hidden = t.status === 'running' && t.mode === 'deadline';
+ const label = {idle:'开始',running:'暂停',paused:'继续',overtime:'完成'}[t.status];
+ const icon = t.status === 'running' ? '<path d="M7 5h4v14H7zm6 0h4v14h-4z"/>' : t.status === 'overtime' ? '<path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>' : '<path d="m8 5 11 7-11 7z"/>';
+ $('timer-start').innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${icon}</svg>`;
+ $('timer-start').setAttribute('aria-label',label);
+ $('timer-start').title = label;
+ const cancel = locked && t.mode === 'deadline';
+ const resetLabel = cancel ? '取消' : '重置';
+ $('timer-reset').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${cancel ? '<path d="m6 6 12 12M18 6 6 18"/>' : '<path d="M3 11a9 9 0 1 1 2.5 7M3 4v7h7"/>'}</svg>`;
+ $('timer-reset').setAttribute('aria-label',resetLabel);
+ $('timer-reset').title = resetLabel;
+ $('interval-value').disabled = state.reminder.running; $('interval-unit').disabled = state.reminder.running;
+ $('reminder-toggle').textContent = state.reminder.running ? '停止提醒' : '启动提醒';
+ $('reminder-toggle').setAttribute('aria-pressed',String(state.reminder.running));
+ $('reminder-readout').hidden = !state.reminder.running;
+}
+for (const mode of ['duration','deadline']) $('mode-'+mode).onclick = () => {
+ if (state.timer.status !== 'idle') return;
+ showError('timer'); state.mode = mode; state.timer = idleTimer(mode);
+ showError('timer'); renderControls(); save(); tick();
+};
+for (const [id,key] of Object.entries(inputMap)) $(id).addEventListener('input',() => {
+ state.settings[key] = $(id).value;
+ showError(id.startsWith('interval') ? 'reminder' : 'timer');
+ renderControls(); queueSave(); tick();
+});
+// Native arrow keys remain available; page scrolling never edits a number.
+document.querySelectorAll('input[type=number]').forEach(input => input.addEventListener('wheel',event => {
+ if (document.activeElement === input) event.preventDefault();
+},{passive:false}));
+document.querySelectorAll('[data-minutes]').forEach(button => button.onclick = () => {
+ if (state.timer.status !== 'idle') return;
+ for (const [id,value] of Object.entries({hours:'0',minutes:button.dataset.minutes,seconds:'0'})) { $(id).value = value; state.settings[id] = value; }
+ showError('timer'); renderControls(); save(); tick();
+});
+$('toggle-deadline-seconds').onclick = () => {
+ state.showDlSeconds = !state.showDlSeconds;
+ showError('timer'); renderControls(); save(); tick();
+ if (state.showDlSeconds) $('deadline-second').focus();
+};
+$('timer-start').onclick = () => {
+ void unlockAudio();
+ const t = state.timer, now = Date.now();
+ if (t.status === 'running') {
+  if (t.mode === 'deadline') return;
+  if (t.end <= now) { tick(); return; }
+  t.remaining = t.end-now; t.status = 'paused';
+ } else if (t.status === 'paused') { t.end = now+t.remaining; t.status = 'running'; }
+ else if (t.status === 'overtime') state.timer = idleTimer(state.mode);
+ else {
+  const value = timerValue(now);
+  if (value.error) { showError('timer',value.error); return; }
+  state.timer = {status:'running',mode:state.mode,end:value.end,total:value.ms,remaining:value.ms,notified:false};
+ }
+ showError('timer'); renderControls(); save(); tick();
+};
+$('timer-reset').onclick = () => { state.timer = idleTimer(state.mode); showError('timer'); renderControls(); save(); tick(); };
+$('reminder-toggle').onclick = () => {
+ void unlockAudio();
+ const r = state.reminder;
+ if (r.running) { r.running = false; r.next = 0; }
+ else {
+  const value = intervalValue();
+  if (value.error) { showError('reminder',value.error); return; }
+  r.running = true; r.interval = value.ms; r.next = Date.now()+value.ms;
+ }
+ showError('reminder'); renderControls(); save(); tick();
+};
+function setText(id,value) { if ($(id).textContent !== value) $(id).textContent = value; }
+function tick() {
+ const now = Date.now(), date = new Date(now), t = state.timer, r = state.reminder;
+ setText('clock',clockText(date,state.showSeconds));
+ $('clock').setAttribute('aria-label',`当前时间 ${clockText(date,state.showSeconds)}，点击${state.showSeconds ? '隐藏' : '显示'}秒数`);
+ setText('clock-date',`${date.getMonth()+1}月${date.getDate()}日 · ${['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][date.getDay()]}`);
+ if (t.status === 'running' && now >= t.end) {
+  t.status = 'overtime';
+  if (!t.notified) { t.notified = true; notify('倒计时结束，开始超时计时。'); }
+  renderControls(); save();
+ }
+ if (r.running && now >= r.next) {
+  // Keep the original cadence, issuing only one notice after a sleeping tab returns.
+  r.last = now; r.next += (Math.floor((now-r.next)/r.interval)+1)*r.interval;
+  notify('间隔提醒 · '+clockText(date)); save();
+ }
+ let remaining = 0, ratio = 100, end = '', status = '待开始';
+ if (t.status === 'running') { remaining = Math.max(0,t.end-now); ratio = remaining/t.total*100; status = '进行中'; end = '结束于 '+endText(t.end); }
+ else if (t.status === 'paused') { remaining = t.remaining; ratio = remaining/t.total*100; status = '已暂停'; }
+ else if (t.status === 'overtime') { remaining = now-t.end; ratio = 0; status = '超时计时'; }
+ else {
+  const value = timerValue(now); remaining = value.ms || 0;
+  if (!value.error) end = (state.mode === 'duration' ? '预计结束 ' : '结束于 ')+endText(value.end);
+  else if (state.mode === 'deadline') status = '待设置';
+ }
+ const timerSection = document.querySelector('.timer');
+ timerSection.classList.toggle('is-running',t.status === 'running');
+ timerSection.classList.toggle('is-paused',t.status === 'paused');
+ timerSection.classList.toggle('is-overtime',t.status === 'overtime');
+ const text = (t.status === 'overtime' ? '+' : '')+format(remaining,t.status !== 'overtime');
+ setText('timer-readout',text); setText('timer-status',status); setText('timer-end',end);
+ $('timer-readout').classList.toggle('overtime',t.status === 'overtime');
+ $('timer-readout').classList.toggle('long',text.length > 7);
+ $('timer-readout').setAttribute('aria-label',`${t.status === 'overtime' ? '超出时间' : '剩余时间'} ${text}`);
+ ratio = Math.max(0,Math.min(100,ratio));
+ $('progress-fill').style.width = ratio+'%';
+ $('timer-progress').setAttribute('aria-valuenow',String(Math.round(ratio)));
+ const reminderText = format(r.running ? Math.max(0,r.next-now) : 0);
+ if (r.running) setText('reminder-readout',reminderText);
+ const title = t.status === 'running' || t.status === 'overtime' ? `${text} · ${t.status === 'overtime' ? '超时' : '倒计时'}` : r.running ? `${reminderText} · 提醒` : '计时器';
+ if (document.title !== title) document.title = title;
+}
+renderSound(); renderControls(); tick(); save();
+setInterval(tick,250);
+document.addEventListener('visibilitychange',() => { if (!document.hidden) tick(); });
+window.addEventListener('pageshow',tick);
+})();
+</script>
+</body>
+</html>
