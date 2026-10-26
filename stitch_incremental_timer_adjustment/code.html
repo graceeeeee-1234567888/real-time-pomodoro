@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width,initial-scale=1" name="viewport"/>
 <meta content="light" name="color-scheme"/>
-<title>+00:05 · 继续计时</title>
+<title>计时器</title>
 <style>
 :root{
   --bg:#f8f9f6;
@@ -20,11 +20,11 @@
   --wave-secondary:#c6dfbf;
   --picker-item-h:36px;
   /* 统一超时与已过去的清爽蓝色系 */
-  --blue-text:#1d4ed8;
-  --blue-accent:#2563eb;
-  --blue-soft-bg:#eff6ff;
-  --blue-line:#bfdbfe;
-  --blue-fill:#dbeafe;
+  --blue-text:#244b7a;
+  --blue-accent:#38659c;
+  --blue-soft-bg:#e9f0f8;
+  --blue-line:#b9cbe0;
+  --blue-fill:#38659c;
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 "Segoe UI","Microsoft YaHei",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
@@ -84,7 +84,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:.06em}
 }
 .timer-time.past-mode .unit,
 .timer-time.overtime-mode .unit{
-  color:#60a5fa;
+  color:var(--blue-accent);
 }
 .timer-time .unit:last-child{margin-right:0}
 .timer-time .prefix-plus{font-size:0.75em;margin-right:4px;vertical-align:baseline;font-weight:700}
@@ -344,6 +344,44 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 @media(prefers-reduced-motion:reduce){
  *,*::before,*::after{animation:none!important;transition:none!important}
 }
+
+.tabs button{position:relative}
+.tabs button::after{content:"";position:absolute;right:7px;top:50%;width:4px;height:4px;margin-top:-2px;border-radius:50%;background:var(--accent);visibility:hidden}
+.tabs button[data-background-running=true]::after{visibility:visible}
+.timer-time-wrap:focus-visible,.picker-col:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.timer.is-stopwatch .readout{border:1px solid var(--line);border-radius:6px;background:#f0f3ee}
+.timer.is-stopwatch .timer-time{font-size:clamp(42px,9vw,80px)}
+.timer.is-stopwatch .timer-time.long{font-size:clamp(28px,6.5vw,54px)}
+.lap-records{max-width:560px;margin:18px auto 0;max-height:216px;overflow:auto;scrollbar-width:thin}
+.lap-list{list-style:none;margin:0;padding:0;font-variant-numeric:tabular-nums}
+.lap-list li{display:grid;grid-template-columns:32px minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center;padding:10px 8px;border-bottom:1px solid var(--line);font-size:13px}
+.lap-list li span:first-child{color:var(--muted);font-size:11px;text-align:left}
+.lap-list li span:nth-child(2){font-weight:600;text-align:right}
+.lap-list li span:last-child{color:var(--muted);text-align:right}
+.deadline-layout{display:grid;grid-template-columns:36px minmax(0,1fr);gap:4px;align-items:center}
+.return-today{width:36px;height:36px;min-height:36px;padding:0;color:#87948a;background:transparent;border:0;border-radius:6px}
+.return-today svg{width:16px;height:16px}
+.return-today:hover:not(:disabled){color:var(--muted);background:var(--soft)}
+.return-today:disabled{opacity:.3}
+.ios-picker-wrapper{width:100%;min-width:0}
+.ios-picker-columns{z-index:3}
+.ios-picker-mask-top,.ios-picker-mask-bottom{z-index:4}
+.timer.is-stopwatch .end-time{display:none}
+.ios-picker-highlight{top:60px}
+.ios-picker-mask-top{top:6px}
+.ios-picker-mask-bottom{bottom:6px}
+.picker-col[aria-disabled=true]{cursor:default}
+@media(max-width:560px){
+.header-right{gap:4px}.clock{font-size:30px;min-width:136px}
+.tabs button{min-width:80px;padding:5px 14px}
+.timer.is-stopwatch .timer-time{font-size:clamp(36px,10.5vw,54px)}
+.timer.is-stopwatch .timer-time.long{font-size:clamp(24px,7.5vw,40px)}
+.ios-picker-wrapper{padding-left:6px;padding-right:6px}
+.picker-item{font-size:14px;padding:0 2px}.picker-item.is-selected{font-size:15px}
+.date-tag{width:24px;margin-left:4px;font-size:10px}.date-unit-label{margin-right:2px}.picker-col-colon{flex-basis:10px}
+}
+@media(max-width:360px){.clock{font-size:26px;min-width:120px}.lap-list li{gap:6px;font-size:12px}}
+
 </style>
 </head>
 <body>
@@ -363,6 +401,7 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 <div aria-label="计时方式" class="tabs" role="group">
 <button aria-pressed="true" class="" id="mode-duration">时长</button>
 <button aria-pressed="false" class="" id="mode-deadline">定点</button>
+<button aria-pressed="false" id="mode-stopwatch">段计时</button>
 </div>
 <div class="readout">
 <div aria-label="剩余时间比例" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0" class="progress" id="timer-progress" role="progressbar">
@@ -374,8 +413,9 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 </div>
 </div>
 <div class="timer-time-wrap" id="timer-time-wrap" title="点击切换秒数显示与跨度单位">
-<div aria-label="剩余时间" aria-live="off" class="timer-time" id="timer-readout" role="timer">00:00</div>
+<div aria-label="剩余时间" aria-live="off" class="timer-time" id="timer-readout" role="timer">25:00</div>
 </div>
+<p class="timer-status" id="timer-status" role="status"></p>
 </div>
 <div class="settings">
 <!-- 时长面板 -->
@@ -386,7 +426,7 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 <div class="segment"><input aria-describedby="timer-error" aria-invalid="false" aria-label="时长：分钟" id="minutes" inputmode="numeric" max="59" min="0" placeholder="0" step="1" type="number" value="25"/><span aria-hidden="true" class="">分</span></div>
 <div class="segment"><input aria-describedby="timer-error" aria-invalid="false" aria-label="时长：秒" id="seconds" inputmode="numeric" max="59" min="0" placeholder="0" step="1" type="number" value="0"/><span aria-hidden="true" class="">秒</span></div>
 </div>
-<div aria-hidden="true" class="duration-subrow">
+<div class="duration-subrow">
 <div class="subrow-slot"></div>
 <div class="subrow-slot">
 <div aria-label="增加时长" class="presets" role="group">
@@ -401,6 +441,8 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 </div>
 <!-- 定点面板：iOS 原生拟物滚轮选择器 -->
 <div hidden="" id="deadline-panel">
+<div class="deadline-layout">
+<button class="return-today" id="return-today" aria-label="回到今天" title="回到今天"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v4m8-4v4M5 10h14M7 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6M14 15l-3 3 3 3m-3-3h6a4 4 0 0 0 4-4"/></svg></button>
 <div class="ios-picker-wrapper">
 <div class="ios-picker-highlight"></div>
 <div class="ios-picker-mask-top"></div>
@@ -422,13 +464,16 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 </div>
 </div>
 </div>
+</div>
 <p class="error" id="timer-error" role="alert"></p>
 </div>
 <div class="actions">
 <button aria-label="开始" class="primary" id="timer-start" title="开始"><svg aria-hidden="true" fill="currentColor" viewbox="0 0 24 24"><path d="m8 5 11 7-11 7z"></path></svg></button>
+<button class="secondary" id="timer-lap" aria-label="记录一段" title="记录一段" hidden disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 21V4m0 1c4-4 8 4 12 0v9c-4 4-8-4-12 0"/></svg></button>
 <button aria-label="重置" class="secondary" id="timer-reset" title="重置"><svg aria-hidden="true" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24"><path d="M3 11a9 9 0 1 1 2.5 7M3 4v7h7"></path></svg></button>
 </div>
-<p class="end-time" id="timer-end">继续计时</p>
+<p class="end-time" id="timer-end"></p>
+<div class="lap-records" id="lap-records" role="region" aria-label="分段记录" tabindex="0" hidden><ol class="lap-list" id="lap-list" aria-label="每段耗时与累计耗时，最新在前"></ol></div>
 </section>
 <section aria-label="间隔提醒" class="reminder">
 <div class="reminder-row">
@@ -450,751 +495,498 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 </div>
 <div aria-atomic="false" aria-live="polite" class="toasts" id="toasts" role="status"></div>
 <script>
+
 'use strict';
 (() => {
 const $ = id => document.getElementById(id);
 const KEY = 'adhd-timer-v3';
-const ITEM_H = 36;
-const pad = n => String(n).padStart(2, '0');
-const dateValue = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-const clockText = (d, seconds=true) => `${pad(d.getHours())}:${pad(d.getMinutes())}${seconds ? ':'+pad(d.getSeconds()) : ''}`;
-
-const formatDigital = (ms, roundUp=true) => {
- const sec = Math.max(0, (roundUp ? Math.ceil : Math.floor)(ms / 1000));
- const days = Math.floor(sec / 86400);
- const hours = Math.floor((sec % 86400) / 3600);
- const mins = Math.floor((sec % 3600) / 60);
- const secs = sec % 60;
- if (days > 0) {
-   return `${days}天 ${pad(hours)}:${pad(mins)}:${pad(secs)}`;
- }
- return `${hours ? pad(hours)+':' : ''}${pad(mins)}:${pad(secs)}`;
-};
-
-const endText = ms => {
+const ITEM_H = 36, MAX_DATE = 8640000000000000, MAX_DURATION = (999*3600+59*60+59)*1000;
+const MODES = ['duration','deadline','stopwatch'];
+const modeNames = {duration:'时长',deadline:'定点',stopwatch:'段计时'};
+const pad = n => String(n).padStart(2,'0');
+const dateValue = d => String(d.getFullYear()).padStart(4,'0')+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const clockText = (d,seconds=true) => pad(d.getHours())+':'+pad(d.getMinutes())+(seconds ? ':'+pad(d.getSeconds()) : '');
+function formatDigital(ms,roundUp=true) {
+ const seconds = Math.max(0,(roundUp ? Math.ceil : Math.floor)(ms/1000));
+ const days = Math.floor(seconds/86400), hours = Math.floor(seconds/3600)%24;
+ return (days ? days+'天 ' : '')+(hours || days ? pad(hours)+':' : '')+pad(Math.floor(seconds/60)%60)+':'+pad(seconds%60);
+}
+function formatStopwatch(ms) {
+ const centiseconds = Math.max(0,Math.floor(ms/10));
+ return formatDigital(Math.floor(centiseconds/100)*1000,false)+'.'+pad(centiseconds%100);
+}
+function endText(ms) {
  const d = new Date(ms), today = new Date();
- const prefix = dateValue(d) === dateValue(today) ? '' : `${d.getFullYear() === today.getFullYear() ? '' : d.getFullYear()+'年'}${d.getMonth()+1}月${d.getDate()}日 `;
- return prefix + clockText(d, false);
-};
-
-// 预备下一小时的目标默认时间
-const nextHour = new Date(Date.now() + 3600000);
-nextHour.setMinutes(0, 0, 0);
-
+ return (dateValue(d) === dateValue(today) ? '' : (d.getFullYear() === today.getFullYear() ? '' : d.getFullYear()+'年')+(d.getMonth()+1)+'月'+d.getDate()+'日 ')+clockText(d);
+}
 const idleTimer = mode => ({status:'idle',mode,end:0,total:0,remaining:0,notified:false,isPast:false});
-
+const nextHour = new Date(Date.now()+3600000); nextHour.setMinutes(0,0,0);
 const state = {
-  sound: true,
-  showSeconds: true,
-  mode: 'duration',
-  deadlineCompactMode: true, // 定点模式下未展开秒数时采用跨度单位显示
-  settings: {
-    hours: '0', minutes: '25', seconds: '0',
-    date: dateValue(nextHour),
-    hour: pad(nextHour.getHours()),
-    minute: pad(nextHour.getMinutes()),
-    interval: '5', unit: '60000'
-  },
-  timer: idleTimer('duration'),
-  reminder: {running:false, interval:300000, next:0, last:0}
+ sound:true, clockShowSeconds:true, durationCompactMode:false, deadlineCompactMode:true, mode:'duration',
+ settings:{hours:'0',minutes:'25',seconds:'0',date:dateValue(nextHour),hour:pad(nextHour.getHours()),minute:pad(nextHour.getMinutes()),interval:'5',unit:'60000'},
+ timers:{duration:idleTimer('duration'),deadline:idleTimer('deadline')},
+ stopwatch:{status:'idle',elapsed:0,startedAt:0,laps:[]},
+ reminder:{running:false,interval:300000,next:0,last:0}
 };
-
-// 恢复本地存储
+const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+const numberIn = (value,min,max) => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+function validDate(value) {
+ if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+ const [y,m,d] = value.split('-').map(Number), date = new Date(y,m-1,d);
+ return y >= 1000 && y <= 9999 && date.getFullYear() === y && date.getMonth() === m-1 && date.getDate() === d;
+}
+function numericSetting(value,min,max,allowBlank=false) {
+ return typeof value === 'string' && value.length <= 12 && ((allowBlank && value === '') || (/^\d+$/.test(value) && Number(value) >= min && Number(value) <= max));
+}
+function restoreTimer(source,mode) {
+ const fallback = idleTimer(mode);
+ if (!isObject(source) || !['idle','running','paused','overtime','past'].includes(source.status) || (mode === 'duration' && source.status === 'past')) return fallback;
+ if (source.status === 'idle') return fallback;
+ if (!numberIn(source.end,1,MAX_DATE) || !numberIn(source.total,source.status === 'running' ? 1 : 0,mode === 'duration' ? MAX_DURATION : MAX_DATE) || !numberIn(source.remaining,0,source.total)) return fallback;
+ if (['overtime','past'].includes(source.status) && source.end > Date.now()) return fallback;
+ return {status:source.status,mode,end:source.end,total:source.total,remaining:source.remaining,notified:source.notified === true,isPast:source.status === 'past'};
+}
+function stopwatchElapsed(now=Date.now()) {
+ const s = state.stopwatch;
+ return s.elapsed+(s.status === 'running' ? Math.max(0,now-s.startedAt) : 0);
+}
+// Restore each independent field without trusting the saved object wholesale.
 try {
-  const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
-  if (saved && typeof saved === 'object') {
-    if (typeof saved.sound === 'boolean') state.sound = saved.sound;
-    if (typeof saved.showSeconds === 'boolean') state.showSeconds = saved.showSeconds;
-    if (typeof saved.deadlineCompactMode === 'boolean') state.deadlineCompactMode = saved.deadlineCompactMode;
-    if (['duration','deadline'].includes(saved.mode)) state.mode = saved.mode;
-    if (saved.settings) Object.assign(state.settings, saved.settings);
-    if (saved.timer && ['running','paused','overtime','past'].includes(saved.timer.status)) {
-      state.timer = saved.timer;
-      state.mode = saved.timer.mode;
-    }
+ const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+ if (isObject(saved)) {
+  if (typeof saved.sound === 'boolean') state.sound = saved.sound;
+  if (typeof saved.clockShowSeconds === 'boolean') state.clockShowSeconds = saved.clockShowSeconds;
+  else if (typeof saved.showSeconds === 'boolean') state.clockShowSeconds = saved.showSeconds;
+  for (const key of ['durationCompactMode','deadlineCompactMode']) if (typeof saved[key] === 'boolean') state[key] = saved[key];
+  if (MODES.includes(saved.mode)) state.mode = saved.mode;
+  const settings = isObject(saved.settings) ? saved.settings : {};
+  for (const [key,min,max,blank] of [['hours',0,999,true],['minutes',0,59,true],['seconds',0,59,true],['hour',0,23,false],['minute',0,59,false],['interval',1,999,false]]) {
+   if (numericSetting(settings[key],min,max,blank)) state.settings[key] = settings[key];
   }
-} catch (e) {}
-
+  if (validDate(settings.date)) state.settings.date = settings.date;
+  if (['1000','60000','3600000'].includes(settings.unit)) state.settings.unit = settings.unit;
+  if (isObject(saved.timers)) {
+   for (const mode of ['duration','deadline']) state.timers[mode] = restoreTimer(saved.timers[mode],mode);
+  } else if (isObject(saved.timer) && ['duration','deadline'].includes(saved.timer.mode)) {
+   state.timers[saved.timer.mode] = restoreTimer(saved.timer,saved.timer.mode);
+  }
+  const r = saved.reminder;
+  if (isObject(r) && typeof r.running === 'boolean' && numberIn(r.interval,1000,999*3600000) && Number.isInteger(r.interval) && (!r.running || numberIn(r.next,1,MAX_DATE))) {
+   state.reminder = {running:r.running,interval:r.interval,next:r.running ? r.next : 0,last:numberIn(r.last,0,Date.now()) ? r.last : 0};
+  }
+  const s = saved.stopwatch;
+  if (isObject(s) && ['idle','running','paused'].includes(s.status) && numberIn(s.elapsed,0,MAX_DATE) && (s.status !== 'running' || numberIn(s.startedAt,1,MAX_DATE))) {
+   state.stopwatch = {status:s.status,elapsed:s.status === 'idle' ? 0 : s.elapsed,startedAt:s.status === 'running' ? s.startedAt : 0,laps:[]};
+   let previous = 0;
+   if (s.status !== 'idle' && Array.isArray(s.laps)) {
+    const total = stopwatchElapsed();
+    for (const lap of s.laps) {
+     if (isObject(lap) && numberIn(lap.elapsed,previous,total) && lap.elapsed > previous) {
+      state.stopwatch.laps.push({elapsed:lap.elapsed,split:lap.elapsed-previous}); previous = lap.elapsed;
+     }
+    }
+   }
+  }
+ }
+} catch { /* Disabled storage or corrupt JSON does not prevent operation. */ }
 let saveJob;
 function save() {
-  clearTimeout(saveJob);
-  try {
-    localStorage.setItem(KEY, JSON.stringify({version:5,...state}));
-    $('page-note').textContent = '提醒需保持页面打开。';
-  } catch(e) {
-    $('page-note').textContent = '当前浏览器无法保存；刷新会丢失计时。';
-  }
+ clearTimeout(saveJob);
+ try { localStorage.setItem(KEY,JSON.stringify({version:6,...state})); $('page-note').textContent = '提醒需保持页面打开。'; }
+ catch { $('page-note').textContent = '当前浏览器无法保存；刷新会丢失计时。'; }
 }
-function queueSave() { clearTimeout(saveJob); saveJob = setTimeout(save, 200); }
-window.addEventListener('pagehide', save);
-
+function queueSave() { clearTimeout(saveJob); saveJob = setTimeout(save,200); }
+window.addEventListener('pagehide',save);
 function toast(message) {
-  const item = document.createElement('div');
-  item.className = 'toast';
-  item.textContent = message;
-  while ($('toasts').children.length >= 2) $('toasts').firstElementChild.remove();
-  $('toasts').append(item);
-  setTimeout(() => item.remove(), 3200);
+ const item = document.createElement('div'); item.className = 'toast'; item.textContent = message;
+ while ($('toasts').children.length >= 3) $('toasts').firstElementChild.remove();
+ $('toasts').append(item); setTimeout(() => item.remove(),4000);
 }
-
-/* 音频逻辑 */
 let audio;
 async function unlockAudio() {
-  if (!state.sound) return false;
-  try {
-    const Audio = window.AudioContext || window.webkitAudioContext;
-    if (!Audio) return false;
-    if (!audio || audio.state === 'closed') audio = new Audio();
-    if (audio.state !== 'running') await audio.resume();
-    return audio.state === 'running';
-  } catch(e) { return false; }
+ if (!state.sound) return false;
+ try {
+  const Audio = window.AudioContext || window.webkitAudioContext;
+  if (!Audio) return false;
+  if (!audio || audio.state === 'closed') audio = new Audio();
+  if (audio.state !== 'running') await audio.resume();
+  return audio.state === 'running';
+ } catch { return false; }
 }
 function chime() {
-  if (!state.sound || !audio || audio.state !== 'running') return false;
-  try {
-    const start = audio.currentTime;
-    [659.25, 784].forEach((hz, i) => {
-      const osc = audio.createOscillator(), gain = audio.createGain(), at = start + i * 0.22;
-      osc.type = 'sine'; osc.frequency.value = hz;
-      gain.gain.setValueAtTime(0, at);
-      gain.gain.linearRampToValueAtTime(.12, at + 0.025);
-      gain.gain.exponentialRampToValueAtTime(.001, at + 0.55);
-      osc.connect(gain); gain.connect(audio.destination);
-      osc.onended = () => { osc.disconnect(); gain.disconnect(); };
-      osc.start(at); osc.stop(at + 0.6);
-    });
-    return true;
-  } catch(e) { return false; }
+ if (!state.sound || !audio || audio.state !== 'running') return false;
+ try {
+  const start = audio.currentTime;
+  [659.25,784].forEach((hz,i) => {
+   const osc = audio.createOscillator(), gain = audio.createGain(), at = start+i*.22;
+   osc.frequency.value = hz; osc.type = 'sine';
+   gain.gain.setValueAtTime(0,at); gain.gain.linearRampToValueAtTime(.12,at+.025); gain.gain.exponentialRampToValueAtTime(.001,at+.55);
+   osc.connect(gain); gain.connect(audio.destination);
+   osc.onended = () => {osc.disconnect();gain.disconnect();}; osc.start(at); osc.stop(at+.6);
+  });
+  return true;
+ } catch { return false; }
 }
-function notify(msg) {
-  const ok = chime();
-  toast(msg + (state.sound && !ok ? ' · 点击声音开启' : ''));
-}
-
+function notify(message) { const played = chime(); toast(message+(state.sound && !played ? ' · 点击试听启用声音' : '')); }
+const speaker = '<path d="M11 5 6 9H3v6h3l5 4z"/>';
 function renderSound() {
-  const speaker = '<path d="M11 5 6 9H3v6h3l5 4z"/>';
-  $('sound').innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${speaker}${state.sound ? '<path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>' : '<path d="m16 9 6 6m0-6-6 6"/>'}</svg>`;
-  $('sound').setAttribute('aria-pressed', String(state.sound));
-  $('sound').title = state.sound ? '关闭声音' : '开启声音';
+ $('sound').innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+speaker+(state.sound ? '<path d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/>' : '<path d="m16 9 6 6m0-6-6 6"/>')+'</svg>';
+ $('sound').setAttribute('aria-pressed',String(state.sound));
+ $('sound').setAttribute('aria-label',state.sound ? '关闭声音' : '开启声音');
+ $('sound').title = state.sound ? '关闭声音' : '开启声音';
 }
-$('sound').onclick = async () => {
-  state.sound = !state.sound; renderSound(); save();
-  if (state.sound && !await unlockAudio()) toast('请点击试听重试。');
-};
-$('test-sound').onclick = async () => {
-  if (!state.sound) { toast('请先开启声音。'); return; }
-  if (!await unlockAudio() || !chime()) toast('浏览器无法播放。');
-};
-document.addEventListener('pointerdown', () => { void unlockAudio(); }, {once:true});
-document.addEventListener('keydown', () => { void unlockAudio(); }, {once:true});
-
-// 顶栏时钟秒数切换与状态同步
-$('clock').onclick = () => { 
-  state.showSeconds = !state.showSeconds; 
-  save(); 
-  tick(); 
-};
-
-/* 输入与解析 */
-function integer(id, min, max, emptyIsZero=false) {
-  const input = $(id); if (!input) return 0;
-  const raw = input.value.trim();
-  if (raw === '' && emptyIsZero) return 0;
-  return /^\d+$/.test(raw) && Number(raw) >= min && Number(raw) <= max ? Number(raw) : null;
+$('sound').onclick = async () => { state.sound = !state.sound; renderSound(); save(); if (state.sound && !await unlockAudio()) toast('请点击试听重试。'); };
+$('test-sound').onclick = async () => { if (!state.sound) {toast('请先开启声音。');return;} if (!await unlockAudio() || !chime()) toast('浏览器无法播放。'); };
+document.addEventListener('pointerdown',() => {void unlockAudio();},{once:true});
+document.addEventListener('keydown',() => {void unlockAudio();},{once:true});
+$('clock').onclick = () => {state.clockShowSeconds = !state.clockShowSeconds;save();tick();};
+function integer(id,min,max,emptyIsZero=false) {
+ const input = $(id), raw = input.value.trim();
+ if (input.validity.badInput) return null;
+ if (raw === '' && emptyIsZero) return 0;
+ return /^\d+$/.test(raw) && Number(raw) >= min && Number(raw) <= max ? Number(raw) : null;
 }
-
-function getDeadlineTargetDate() {
-  const [y, m, d] = state.settings.date.split('-').map(Number);
-  const h = parseInt(state.settings.hour, 10) || 0;
-  const min = parseInt(state.settings.minute, 10) || 0;
-  return new Date(y, m - 1, d, h, min, 0, 0);
+function timerValue(mode,now=Date.now()) {
+ if (mode === 'duration') {
+  const h = integer('hours',0,999,true), m = integer('minutes',0,59,true), s = integer('seconds',0,59,true);
+  if ([h,m,s].includes(null)) return {error:'请输入有效时长：时 0–999，分和秒 0–59。'};
+  const ms = (h*3600+m*60+s)*1000;
+  return ms ? {ms,end:now+ms,isPast:false} : {error:'总时长至少为 1 秒，留空按 0 计算。'};
+ }
+ const settings = state.settings;
+ if (!validDate(settings.date) || !numericSetting(settings.hour,0,23) || !numericSetting(settings.minute,0,59)) return {error:'请选择有效的日期和时刻。'};
+ const [y,m,d] = settings.date.split('-').map(Number), h = Number(settings.hour), minute = Number(settings.minute);
+ const target = new Date(y,m-1,d,h,minute,0,0);
+ if (target.getFullYear() !== y || target.getMonth() !== m-1 || target.getDate() !== d || target.getHours() !== h || target.getMinutes() !== minute) return {error:'该时刻不存在，请重新选择。'};
+ const end = target.getTime(), diff = end-now;
+ return {ms:Math.abs(diff),end,isPast:diff <= 0};
 }
-
-function timerValue(now = Date.now()) {
-  if (state.mode === 'duration') {
-    const h = integer('hours',0,999,true), m = integer('minutes',0,59,true), s = integer('seconds',0,59,true);
-    if ([h,m,s].includes(null)) return {error:'请输入有效时长：时 0–999，分和秒 0–59。'};
-    const ms = (h*3600 + m*60 + s) * 1000;
-    return ms ? {ms, end: now + ms, isPast: false} : {error:'总时长至少为 1 秒。'};
-  }
-  // 定点模式
-  const target = getDeadlineTargetDate();
-  const end = target.getTime();
-  const diff = end - now;
-  if (diff < 0) {
-    return {ms: Math.abs(diff), end, isPast: true};
-  }
-  return {ms: diff, end, isPast: false};
-}
-
 function intervalValue() {
-  const value = integer('interval-value',1,999), unit = Number($('interval-unit').value);
-  return value !== null && [1000,60000,3600000].includes(unit) ? {ms:value*unit} : {error:'间隔请输入 1–999 整数。'};
+ const value = integer('interval-value',1,999), unit = Number($('interval-unit').value);
+ return value !== null && [1000,60000,3600000].includes(unit) ? {ms:value*unit} : {error:'间隔请输入 1–999 的整数。'};
 }
-
-function showError(type, msg='') {
-  $(type+'-error').textContent = msg;
+const errors = {duration:'',deadline:'',stopwatch:''};
+function showError(type,message='') {
+ if (type === 'reminder') { $('reminder-error').textContent = message; $('interval-value').setAttribute('aria-invalid',String(Boolean(message))); return; }
+ errors[state.mode] = message; $('timer-error').textContent = message;
+ if (state.mode === 'duration') for (const id of ['hours','minutes','seconds']) $(id).setAttribute('aria-invalid',String(Boolean(message)));
 }
+function setText(id,text) { const node = $(id); if (node.textContent !== text) node.textContent = text; }
+function setHTML(id,html) { const node = $(id); if (node.innerHTML !== html) node.innerHTML = html; }
 
-/* -------------------------------------------------------------
-   iOS 拟物滚轮选择器核心逻辑 (Drum Picker)
-   日期项严格对齐：
-   - 不补0
-   - 月份与日期数字分别使用等宽容器对齐，使“月”与“日”汉字严格在垂直同一列
-   - 仅今天、明天有浅色注释，其余普通日期注释为空，不扰乱排齐
-------------------------------------------------------------- */
+// Calendar arithmetic keeps wheel dates correct across daylight-saving changes.
 const dateOptions = [];
-function buildDateOptions() {
-  dateOptions.length = 0;
-  const now = new Date();
-  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  for (let i = -7; i <= 30; i++) {
-    const d = new Date(base.getTime() + i * 86400000);
-    const val = dateValue(d);
-    const monthNum = d.getMonth() + 1;
-    const dayNum = d.getDate();
-    
-    let tag = '';
-    if (i === 0) tag = '今天';
-    else if (i === 1) tag = '明天';
-
-    // HTML 结构确保：“月”和“日”汉字完全在各自固定的垂直坐标线上
-    const html = `<div class="date-line-item"><span class="date-box-month">${monthNum}</span><span class="date-unit-label">月</span><span class="date-box-day">${dayNum}</span><span class="date-unit-label">日</span><span class="date-tag">${tag}</span></div>`;
-
-    dateOptions.push({value: val, html});
-  }
+let datesBuiltFor = '', dateWheelCtrl, hourWheelCtrl, minWheelCtrl;
+function buildDateOptions(now=new Date()) {
+ datesBuiltFor = dateValue(now);
+ const values = new Set();
+ for (let offset=-7;offset<=30;offset++) {
+  const date = new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  date.setDate(date.getDate()+offset); values.add(dateValue(date));
+ }
+ if (validDate(state.settings.date)) values.add(state.settings.date);
+ const tomorrow = new Date(now.getFullYear(),now.getMonth(),now.getDate()+1);
+ dateOptions.splice(0,dateOptions.length,...[...values].sort().map(value => {
+  const [y,m,d] = value.split('-').map(Number);
+  const tag = value === datesBuiltFor ? '今天' : value === dateValue(tomorrow) ? '明天' : '';
+  return {value,label:y+'年'+m+'月'+d+'日'+(tag ? '，'+tag : ''),html:'<div class="date-line-item"><span class="date-box-month">'+m+'</span><span class="date-unit-label">月</span><span class="date-box-day">'+d+'</span><span class="date-unit-label">日</span><span class="date-tag">'+tag+'</span></div>'};
+ }));
 }
-buildDateOptions();
-
-const hourOptions = Array.from({length: 24}, (_, i) => ({value: pad(i), label: `${pad(i)} 时`}));
-const minuteOptions = Array.from({length: 60}, (_, i) => ({value: pad(i), label: `${pad(i)} 分`}));
-
-function setupWheel(colId, contentId, options, getVal, onSelect) {
-  const col = $(colId);
-  const content = $(contentId);
-  content.innerHTML = '';
-  options.forEach((opt, idx) => {
-    const div = document.createElement('div');
-    div.className = 'picker-item';
-    div.dataset.index = idx;
-    div.dataset.value = opt.value;
-    if (opt.html) {
-      div.innerHTML = opt.html;
-    } else {
-      div.textContent = opt.label;
-    }
-    content.appendChild(div);
+const hourOptions = Array.from({length:24},(_,n) => ({value:pad(n),label:pad(n)+' 时'}));
+const minuteOptions = Array.from({length:60},(_,n) => ({value:pad(n),label:pad(n)+' 分'}));
+function setupWheel(colId,contentId,options,getValue,onSelect,label) {
+ const col = $(colId), content = $(contentId);
+ let scrollJob, userScrolling = false, disabled = false;
+ col.tabIndex = 0; col.setAttribute('role','spinbutton'); col.setAttribute('aria-label',label);
+ function currentIndex() { const index = options.findIndex(option => option.value === getValue()); return index < 0 ? 0 : index; }
+ function highlight(index=currentIndex()) {
+  for (let i=0;i<content.children.length;i++) content.children[i].classList.toggle('is-selected',i === index);
+  col.setAttribute('aria-valuemin','0'); col.setAttribute('aria-valuemax',String(options.length-1)); col.setAttribute('aria-valuenow',String(index)); col.setAttribute('aria-valuetext',options[index].label);
+ }
+ function scrollToIndex(index,smooth=false) {
+  if (!col.getClientRects().length) return;
+  col.scrollTo({top:index*ITEM_H,behavior:smooth && !matchMedia('(prefers-reduced-motion: reduce)').matches ? 'smooth' : 'instant'});
+ }
+ function syncValue(smooth=false) { clearTimeout(scrollJob);userScrolling=false;highlight();scrollToIndex(currentIndex(),smooth); }
+ function choose(index) {
+  if (disabled) return;
+  clearTimeout(scrollJob); userScrolling=false;
+  index = Math.max(0,Math.min(options.length-1,index));
+  if (getValue() !== options[index].value) onSelect(options[index].value);
+  highlight(index);scrollToIndex(index,true);
+ }
+ function refresh() {
+  clearTimeout(scrollJob); userScrolling=false; content.replaceChildren();
+  options.forEach((option,index) => {
+   const item = document.createElement('div'); item.className='picker-item';item.dataset.index=String(index);item.dataset.value=option.value;
+   if (option.html) item.innerHTML=option.html; else item.textContent=option.label;
+   content.append(item);
   });
-
-  let scrollTimeout = null;
-  function updateHighlight() {
-    const scrollTop = col.scrollTop;
-    const selectedIdx = Math.max(0, Math.min(options.length - 1, Math.round(scrollTop / ITEM_H)));
-    const items = content.children;
-    for (let i = 0; i < items.length; i++) {
-      items[i].classList.toggle('is-selected', i === selectedIdx);
-    }
-    return selectedIdx;
-  }
-
-  function snapTo(index, smooth = true) {
-    const targetY = index * ITEM_H;
-    col.scrollTo({
-      top: targetY,
-      behavior: smooth ? 'smooth' : 'auto'
-    });
-    updateHighlight();
-  }
-
-  col.addEventListener('scroll', () => {
-    updateHighlight();
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
-      const idx = updateHighlight();
-      snapTo(idx, true);
-      const selectedVal = options[idx].value;
-      if (getVal() !== selectedVal) {
-        onSelect(selectedVal);
-      }
-    }, 120);
-  }, {passive: true});
-
-  content.addEventListener('click', e => {
-    const item = e.target.closest('.picker-item');
-    if (!item) return;
-    const idx = Number(item.dataset.index);
-    snapTo(idx, true);
-    onSelect(options[idx].value);
-  });
-
-  function syncValue() {
-    const curVal = getVal();
-    let idx = options.findIndex(o => o.value === curVal);
-    if (idx === -1) idx = 0;
-    snapTo(idx, false);
-  }
-
-  return {syncValue, snapTo};
+  syncValue();
+ }
+ col.addEventListener('wheel',event => {
+  if (disabled) {event.preventDefault();return;}
+  userScrolling=true;
+ },{passive:false});
+ col.addEventListener('pointerdown',() => {if (!disabled) userScrolling=true;});
+ col.addEventListener('touchstart',() => {if (!disabled) userScrolling=true;},{passive:true});
+ col.addEventListener('scroll',() => {
+  if (!col.getClientRects().length) return;
+  const index = Math.max(0,Math.min(options.length-1,Math.round(col.scrollTop/ITEM_H)));
+  highlight(index);
+  if (!userScrolling || disabled) return;
+  clearTimeout(scrollJob); scrollJob=setTimeout(() => choose(index),120);
+ },{passive:true});
+ content.addEventListener('click',event => {
+  const item=event.target.closest('.picker-item');
+  if (item) choose(Number(item.dataset.index));
+ });
+ col.addEventListener('keydown',event => {
+  if (disabled) return;
+  const deltas={ArrowUp:-1,ArrowDown:1,PageUp:-5,PageDown:5};
+  if (!(event.key in deltas) && event.key !== 'Home' && event.key !== 'End') return;
+  event.preventDefault();
+  choose(event.key === 'Home' ? 0 : event.key === 'End' ? options.length-1 : currentIndex()+deltas[event.key]);
+ });
+ function setDisabled(value) {
+  disabled=value;col.setAttribute('aria-disabled',String(value));col.tabIndex=value ? -1 : 0;
+  if (value) {clearTimeout(scrollJob);userScrolling=false;}
+ }
+ refresh();
+ return {syncValue,refresh,setDisabled};
 }
-
-let dateWheelCtrl, hourWheelCtrl, minWheelCtrl;
 function initPickers() {
-  dateWheelCtrl = setupWheel('picker-col-date', 'picker-content-date', dateOptions, 
-    () => state.settings.date, 
-    val => {
-      state.settings.date = val;
-      queueSave(); tick();
-    }
-  );
-
-  hourWheelCtrl = setupWheel('picker-col-hour', 'picker-content-hour', hourOptions, 
-    () => state.settings.hour, 
-    val => {
-      state.settings.hour = val;
-      queueSave(); tick();
-    }
-  );
-
-  minWheelCtrl = setupWheel('picker-col-minute', 'picker-content-minute', minuteOptions, 
-    () => state.settings.minute, 
-    val => {
-      state.settings.minute = val;
-      queueSave(); tick();
-    }
-  );
+ buildDateOptions();
+ const onChange = key => value => {state.settings[key]=value;errors.deadline='';$('timer-error').textContent=errors[state.mode];queueSave();tick();};
+ dateWheelCtrl=setupWheel('picker-col-date','picker-content-date',dateOptions,() => state.settings.date,onChange('date'),'目标日期');
+ hourWheelCtrl=setupWheel('picker-col-hour','picker-content-hour',hourOptions,() => pad(Number(state.settings.hour)),onChange('hour'),'目标小时');
+ minWheelCtrl=setupWheel('picker-col-minute','picker-content-minute',minuteOptions,() => pad(Number(state.settings.minute)),onChange('minute'),'目标分钟');
 }
+function ensureCalendar(now=new Date()) {
+ if (dateValue(now) !== datesBuiltFor) {buildDateOptions(now);dateWheelCtrl.refresh();}
+}
+$('return-today').onclick = () => {
+ if (state.timers.deadline.status !== 'idle') return;
+ const today = new Date();ensureCalendar(today);
+ state.settings.date=dateValue(today);dateWheelCtrl.syncValue(true);showError('timer');save();tick();
+};
 
-// 控件状态更新
+const playPath = '<path d="m8 5 11 7-11 7z"/>';
+const pausePath = '<path d="M7 5h4v14H7zm6 0h4v14h-4z"/>';
+const completePath = '<path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
+function modeIsRunning(mode) { return mode === 'stopwatch' ? state.stopwatch.status === 'running' : ['running','overtime','past'].includes(state.timers[mode].status); }
+function renderTabs() {
+ for (const mode of MODES) {
+  const tab=$('mode-'+mode), background=state.mode !== mode && modeIsRunning(mode);
+  tab.disabled=false;tab.setAttribute('aria-pressed',String(state.mode === mode));tab.dataset.backgroundRunning=String(background);
+  tab.setAttribute('aria-label',modeNames[mode]+(background ? '，后台运行中' : ''));
+ }
+}
+let stopwatchFrame=0;
+function renderStopwatchReadout(now=Date.now()) {
+ const text=formatStopwatch(stopwatchElapsed(now));
+ setText('timer-readout',text);$('timer-readout').classList.toggle('long',text.length>11);
+ $('timer-readout').setAttribute('aria-label','累计时间 '+text);
+}
+function syncStopwatchAnimation() {
+ const shouldRun=state.mode === 'stopwatch' && state.stopwatch.status === 'running' && !document.hidden;
+ if (!shouldRun) {if (stopwatchFrame) cancelAnimationFrame(stopwatchFrame);stopwatchFrame=0;return;}
+ if (stopwatchFrame) return;
+ const frame=() => {stopwatchFrame=0;if (state.mode !== 'stopwatch' || state.stopwatch.status !== 'running' || document.hidden) return;renderStopwatchReadout();stopwatchFrame=requestAnimationFrame(frame);};
+ stopwatchFrame=requestAnimationFrame(frame);
+}
+function renderLaps() {
+ const list=$('lap-list');list.replaceChildren();
+ const laps=state.stopwatch.laps;
+ for (let i=laps.length-1;i>=0;i--) {
+  const lap=laps[i],row=document.createElement('li');
+  row.setAttribute('aria-label','第 '+(i+1)+' 段，本段 '+formatStopwatch(lap.split)+'，累计 '+formatStopwatch(lap.elapsed));
+  for (const text of [pad(i+1),formatStopwatch(lap.split),formatStopwatch(lap.elapsed)]) {const span=document.createElement('span');span.textContent=text;row.append(span);}
+  list.append(row);
+ }
+ $('lap-records').hidden=state.mode !== 'stopwatch' || !laps.length;
+}
 function renderControls() {
-  const t = state.timer, locked = t.status !== 'idle', isDeadline = state.mode === 'deadline';
-  $('duration-panel').hidden = isDeadline;
-  $('deadline-panel').hidden = !isDeadline;
-  
-  $('mode-duration').setAttribute('aria-pressed', String(state.mode === 'duration'));
-  $('mode-deadline').setAttribute('aria-pressed', String(state.mode === 'deadline'));
-  $('mode-duration').disabled = locked;
-  $('mode-deadline').disabled = locked;
-
-  // 滚轮选择器交互锁
-  $('picker-columns').style.pointerEvents = locked ? 'none' : 'auto';
-  $('picker-columns').style.opacity = locked ? '0.6' : '1';
-
-  // 时长三个 input 输入框在锁定期间禁用，但 +5/+10/+20 保持随时可点！
-  ['hours','minutes','seconds'].forEach(id => $(id).disabled = locked);
-
-  // 开始按钮文案与图标
-  let label = '开始';
-  let icon = '<path d="m8 5 11 7-11 7z"/>';
-  if (t.status === 'running') {
-    label = '暂停';
-    icon = '<path d="M7 5h4v14H7zm6 0h4v14h-4z"/>';
-  } else if (t.status === 'paused') {
-    label = '继续';
-    icon = '<path d="m8 5 11 7-11 7z"/>';
-  } else if (t.status === 'overtime' || t.status === 'past') {
-    label = '完成';
-    icon = '<path d="m5 12 4 4L19 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>';
-  }
-  $('timer-start').innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${icon}</svg>`;
-  $('timer-start').setAttribute('aria-label', label);
-  $('timer-start').title = label;
-
-  $('interval-value').disabled = state.reminder.running;
-  $('interval-unit').disabled = state.reminder.running;
-  $('reminder-toggle').textContent = state.reminder.running ? '停止提醒' : '启动提醒';
-  $('reminder-toggle').setAttribute('aria-pressed', String(state.reminder.running));
-  $('reminder-readout').hidden = !state.reminder.running;
+ const stopwatch=state.mode === 'stopwatch', t=stopwatch ? state.stopwatch : state.timers[state.mode];
+ const locked=t.status !== 'idle', deadlineLocked=state.timers.deadline.status !== 'idle';
+ $('duration-panel').hidden=state.mode !== 'duration';$('deadline-panel').hidden=state.mode !== 'deadline';
+ for (const id of ['hours','minutes','seconds']) $(id).disabled=state.timers.duration.status !== 'idle';
+ $('picker-columns').style.pointerEvents=deadlineLocked ? 'none' : 'auto';$('picker-columns').style.opacity=deadlineLocked ? '.6' : '1';
+ for (const control of [dateWheelCtrl,hourWheelCtrl,minWheelCtrl]) control?.setDisabled(deadlineLocked);
+ $('return-today').disabled=deadlineLocked;
+ let label=t.status === 'running' ? '暂停' : t.status === 'paused' ? '继续' : ['overtime','past'].includes(t.status) ? '完成' : '开始';
+ const path=t.status === 'running' ? pausePath : ['overtime','past'].includes(t.status) ? completePath : playPath;
+ $('timer-start').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'+path+'</svg>';
+ $('timer-start').setAttribute('aria-label',label);$('timer-start').title=label;
+ $('timer-reset').disabled=stopwatch && (t.status === 'running' || (t.status === 'idle' && !t.laps.length));
+ $('timer-lap').hidden=!stopwatch;$('timer-lap').disabled=!stopwatch || t.status !== 'running';
+ $('timer-error').textContent=errors[state.mode];
+ $('lap-records').hidden=!stopwatch || !state.stopwatch.laps.length;
+ $('interval-value').disabled=state.reminder.running;$('interval-unit').disabled=state.reminder.running;
+ $('reminder-toggle').textContent=state.reminder.running ? '停止提醒' : '启动提醒';$('reminder-toggle').setAttribute('aria-pressed',String(state.reminder.running));$('reminder-readout').hidden=!state.reminder.running;
+ const wrap=$('timer-time-wrap');
+ wrap.style.cursor=stopwatch ? 'default' : 'pointer';wrap.tabIndex=stopwatch ? -1 : 0;
+ if (stopwatch) {wrap.removeAttribute('role');wrap.removeAttribute('aria-label');wrap.removeAttribute('title');}
+ else {wrap.setAttribute('role','button');wrap.setAttribute('aria-label','切换'+modeNames[state.mode]+'时间显示方式');wrap.title='点击切换精确时间与跨度单位';}
+ renderTabs();syncStopwatchAnimation();
 }
-
-/* 模式切换 */
-$('mode-duration').onclick = () => {
-  if (state.timer.status !== 'idle') return;
-  state.mode = 'duration';
-  state.timer = idleTimer('duration');
-  showError('timer'); renderControls(); save(); tick();
+for (const mode of MODES) $('mode-'+mode).onclick=() => {
+ state.mode=mode;renderControls();save();tick();
+ if (mode === 'deadline') {dateWheelCtrl.syncValue();hourWheelCtrl.syncValue();minWheelCtrl.syncValue();}
 };
-$('mode-deadline').onclick = () => {
-  if (state.timer.status !== 'idle') return;
-  state.mode = 'deadline';
-  state.timer = idleTimer('deadline');
-  showError('timer'); renderControls(); save(); tick();
-  setTimeout(() => {
-    dateWheelCtrl?.syncValue();
-    hourWheelCtrl?.syncValue();
-    minWheelCtrl?.syncValue();
-  }, 50);
-};
-
-/* -------------------------------------------------------------
-   时长倒计时随时快捷累加 (+5, +10, +20)
-------------------------------------------------------------- */
-function addMinutesToTimer(mins) {
-  const addMs = mins * 60000;
-  const t = state.timer;
-  const now = Date.now();
-
-  if (t.status === 'running') {
-    t.end += addMs;
-    t.total += addMs;
-    toast(`已增加 ${mins} 分钟`);
-    save(); tick();
-  } else if (t.status === 'paused') {
-    t.remaining += addMs;
-    t.total += addMs;
-    toast(`已增加 ${mins} 分钟`);
-    save(); tick();
-  } else if (t.status === 'overtime') {
-    const overtimeMs = now - t.end;
-    if (addMs > overtimeMs) {
-      t.end += addMs;
-      t.total += addMs;
-      t.status = 'running';
-      t.notified = false;
-      toast(`已增加 ${mins} 分钟，恢复倒计时`);
-    } else {
-      t.end += addMs;
-      t.total += addMs;
-      toast(`已续时 ${mins} 分钟`);
-    }
-    renderControls(); save(); tick();
-  } else {
-    const h = integer('hours',0,999,true) ?? 0;
-    const m = integer('minutes',0,59,true) ?? 0;
-    const s = integer('seconds',0,59,true) ?? 0;
-    let totalSec = Math.min(999*3600+59*60+59, h*3600 + m*60 + s + mins*60);
-    const newH = Math.floor(totalSec / 3600);
-    const newM = Math.floor((totalSec % 3600) / 60);
-    const newS = totalSec % 60;
-    $('hours').value = String(newH);
-    $('minutes').value = String(newM);
-    $('seconds').value = String(newS);
-    state.settings.hours = String(newH);
-    state.settings.minutes = String(newM);
-    state.settings.seconds = String(newS);
-    showError('timer');
-    queueSave();
-    tick();
-  }
-}
-
-document.querySelectorAll('[data-add-minutes]').forEach(btn => {
-  btn.onclick = () => {
-    const m = Number(btn.dataset.addMinutes);
-    if (m > 0) addMinutesToTimer(m);
-  };
-});
-
-/* -------------------------------------------------------------
-   定点模式跨度单位格式化 (隐藏秒规则)
-------------------------------------------------------------- */
-function formatDeadlineSpan(diffMs, isPast = false) {
-  const prefix = isPast ? '<span class="prefix-plus">+</span>' : '';
-  const totalSec = Math.max(0, Math.round(diffMs / 1000));
-  const totalMin = Math.round(diffMs / 60000);
-
-  if (diffMs >= 24 * 3600 * 1000) {
-    const days = Math.floor(totalSec / 86400);
-    const hours = Math.round((totalSec % 86400) / 3600);
-    if (hours === 0) {
-      return `${prefix}<span class="num">${days}</span><span class="unit">天</span>`;
-    }
-    return `${prefix}<span class="num">${days}</span><span class="unit">天</span><span class="num">${hours}</span><span class="unit">h</span>`;
-  }
-  
-  if (diffMs >= 60 * 60 * 1000) {
-    const hours = Math.floor(totalSec / 3600);
-    const mins = Math.round((totalSec % 3600) / 60);
-    if (mins === 0) {
-      return `${prefix}<span class="num">${hours}</span><span class="unit">h</span>`;
-    }
-    return `${prefix}<span class="num">${hours}</span><span class="unit">h</span><span class="num">${mins}</span><span class="unit">min</span>`;
-  }
-
-  const mins = Math.max(1, totalMin);
-  return `${prefix}<span class="num">${mins}</span><span class="unit">min</span>`;
-}
-
-// 点击主屏时间切换秒数显示与跨度单位
-$('timer-time-wrap').onclick = () => {
-  if (state.mode === 'deadline') {
-    state.deadlineCompactMode = !state.deadlineCompactMode;
-    toast(state.deadlineCompactMode ? '已切换至跨度单位' : '已展开精确数字时间');
-    save(); tick();
-  } else {
-    state.showSeconds = !state.showSeconds;
-    save(); tick();
-  }
-};
-
-/* 操作按钮 */
-$('timer-start').onclick = () => {
-  void unlockAudio();
-  const t = state.timer, now = Date.now();
-  if (t.status === 'running') {
-    t.remaining = t.end - now;
-    t.status = 'paused';
-  } else if (t.status === 'paused') {
-    t.end = now + t.remaining;
-    t.status = 'running';
-  } else if (t.status === 'overtime' || t.status === 'past') {
-    state.timer = idleTimer(state.mode);
-  } else {
-    const val = timerValue(now);
-    if (val.error) { showError('timer', val.error); return; }
-    if (val.isPast) {
-      state.timer = {
-        status: 'past',
-        mode: state.mode,
-        end: val.end,
-        total: val.ms,
-        remaining: val.ms,
-        notified: true,
-        isPast: true
-      };
-      toast('定点时间已过去，进入正向累计');
-    } else {
-      state.timer = {
-        status: 'running',
-        mode: state.mode,
-        end: val.end,
-        total: val.ms,
-        remaining: val.ms,
-        notified: false,
-        isPast: false
-      };
-    }
-  }
-  showError('timer'); renderControls(); save(); tick();
-};
-
-$('timer-reset').onclick = () => {
-  state.timer = idleTimer(state.mode);
-  showError('timer'); renderControls(); save(); tick();
-};
-
-$('reminder-toggle').onclick = () => {
-  void unlockAudio();
-  const r = state.reminder;
-  if (r.running) {
-    r.running = false; r.next = 0;
-  } else {
-    const val = intervalValue();
-    if (val.error) { showError('reminder', val.error); return; }
-    r.running = true; r.interval = val.ms; r.next = Date.now() + val.ms;
-  }
-  showError('reminder'); renderControls(); save(); tick();
-};
-
-// 绑定时长与间隔输入
-['hours','minutes','seconds'].forEach(id => {
-  $(id).value = state.settings[id];
-  $(id).addEventListener('input', () => {
-    state.settings[id] = $(id).value;
-    showError('timer');
-    queueSave(); tick();
-  });
-});
-$('interval-value').value = state.settings.interval;
-$('interval-unit').value = state.settings.unit;
-$('interval-value').addEventListener('input', () => {
-  state.settings.interval = $('interval-value').value;
-  showError('reminder'); queueSave(); tick();
-});
-$('interval-unit').addEventListener('change', () => {
-  state.settings.unit = $('interval-unit').value;
-  showError('reminder'); queueSave(); tick();
-});
-
-function setText(id, val) {
-  if ($(id).textContent !== val) $(id).textContent = val;
-}
-function setHTML(id, html) {
-  if ($(id).innerHTML !== html) $(id).innerHTML = html;
-}
-
-/* 主时钟与倒计时 Tick */
-function tick() {
-  const now = Date.now();
-  const date = new Date(now);
-  const t = state.timer;
-  const r = state.reminder;
-
-  setText('clock', clockText(date, state.showSeconds));
-  setText('clock-date', `${date.getMonth()+1}月${date.getDate()}日 · ${['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][date.getDay()]}`);
-
-  // 倒计时结束检查
+function updateRunningTimers(now) {
+ let changed=false;
+ for (const mode of ['duration','deadline']) {
+  const t=state.timers[mode];
   if (t.status === 'running' && now >= t.end) {
-    t.status = 'overtime';
-    if (!t.notified) {
-      t.notified = true;
-      notify('倒计时结束，继续计时');
-    }
-    renderControls(); save();
+   t.status='overtime';changed=true;
+   if (!t.notified) {t.notified=true;notify(modeNames[mode]+'倒计时结束，继续计时');}
   }
-
-  // 间隔提醒检查
-  if (r.running && now >= r.next) {
-    r.last = now;
-    r.next += (Math.floor((now - r.next) / r.interval) + 1) * r.interval;
-    notify('间隔提醒 · ' + clockText(date));
-    save();
-  }
-
-  let readoutHTML = '';
-  let plainTitleText = '';
-  let statusText = '';
-  let endInfo = '';
-  let ratio = 100;
-  let isPastMode = false;
-  let isOvertimeMode = (t.status === 'overtime');
-  let isLongText = false;
-
-  const timerSection = document.querySelector('.timer');
-
-  if (state.mode === 'deadline') {
-    let diff = 0;
-    let targetEnd = 0;
-    let past = false;
-
-    if (t.status === 'running') {
-      diff = Math.max(0, t.end - now);
-      targetEnd = t.end;
-      ratio = (diff / t.total) * 100;
-      statusText = '进行中';
-      endInfo = '结束于 ' + endText(t.end);
-    } else if (t.status === 'paused') {
-      diff = t.remaining;
-      targetEnd = t.end;
-      ratio = (diff / t.total) * 100;
-      statusText = '已暂停';
-      endInfo = '结束于 ' + endText(t.end);
-    } else if (t.status === 'overtime') {
-      diff = now - t.end;
-      ratio = 0;
-      statusText = '继续计时';
-      targetEnd = t.end;
-      past = true;
-      endInfo = '继续计时';
-    } else if (t.status === 'past') {
-      diff = now - t.end;
-      ratio = 0;
-      statusText = '继续计时';
-      isPastMode = true;
-      targetEnd = t.end;
-      past = true;
-      endInfo = '继续计时';
-    } else {
-      // idle
-      const val = timerValue(now);
-      diff = val.ms;
-      targetEnd = val.end;
-      past = val.isPast;
-      if (past) {
-        statusText = '定点已过去';
-        isPastMode = true;
-        ratio = 0;
-        endInfo = '继续计时';
-      } else {
-        ratio = 100;
-        endInfo = '预计结束 ' + endText(targetEnd);
-      }
-    }
-
-    if (state.deadlineCompactMode) {
-      readoutHTML = formatDeadlineSpan(diff, past);
-      plainTitleText = readoutHTML.replace(/<[^>]+>/g, '');
-    } else {
-      const formatted = formatDigital(diff, true);
-      readoutHTML = `${past ? '+' : ''}${formatted}`;
-      plainTitleText = readoutHTML;
-      if (readoutHTML.length > 8) isLongText = true;
-    }
-
-  } else {
-    // 时长模式 (Duration)
-    if (t.status === 'running') {
-      const rem = Math.max(0, t.end - now);
-      ratio = (rem / t.total) * 100;
-      statusText = '进行中';
-      endInfo = '结束于 ' + endText(t.end);
-      readoutHTML = formatDigital(rem, true);
-    } else if (t.status === 'paused') {
-      const rem = t.remaining;
-      ratio = (rem / t.total) * 100;
-      statusText = '已暂停';
-      readoutHTML = formatDigital(rem, true);
-      endInfo = '预计结束 ' + endText(now + rem);
-    } else if (t.status === 'overtime') {
-      const overtimeMs = now - t.end;
-      ratio = 0;
-      statusText = '继续计时';
-      readoutHTML = '+' + formatDigital(overtimeMs, false);
-      endInfo = '继续计时';
-    } else {
-      // idle
-      const val = timerValue(now);
-      if (val.error) {
-        readoutHTML = '00:00';
-      } else {
-        readoutHTML = formatDigital(val.ms, true);
-        endInfo = '预计结束 ' + endText(val.end);
-        ratio = 100;
-      }
-    }
-    plainTitleText = readoutHTML;
-    if (readoutHTML.length > 8) isLongText = true;
-  }
-
-  // DOM 样式与内容同步
-  timerSection.classList.toggle('is-running', t.status === 'running');
-  timerSection.classList.toggle('is-paused', t.status === 'paused');
-  timerSection.classList.toggle('is-overtime', isOvertimeMode);
-  timerSection.classList.toggle('is-past', isPastMode);
-
-  setHTML('timer-readout', readoutHTML);
-  setText('timer-status', statusText);
-  setText('timer-end', endInfo);
-
-  // 蓝色模式：定点已过去或倒计时超时走表
-  $('timer-readout').classList.toggle('past-mode', isPastMode);
-  $('timer-readout').classList.toggle('overtime-mode', isOvertimeMode);
-  $('timer-readout').classList.toggle('long', isLongText);
-
-  // 进度条与波浪动效宽度
-  ratio = Math.max(0, Math.min(100, ratio));
-  $('progress-fill').style.width = ratio + '%';
-  $('timer-progress').setAttribute('aria-valuenow', String(Math.round(ratio)));
-
-  // 波浪动态
-  const showWave = (t.status === 'running' || t.status === 'paused') && ratio > 0 && ratio < 100;
-  $('wave-front').style.display = showWave ? 'block' : (t.status === 'running' ? 'block' : 'none');
-
-  if (r.running) {
-    const remRem = Math.max(0, r.next - now);
-    setText('reminder-readout', formatDigital(remRem, true));
-  }
-
-  const titlePrefix = (t.status === 'running' || t.status === 'past' || t.status === 'overtime') 
-    ? `${plainTitleText} · ${(isPastMode || t.status === 'overtime') ? '继续计时' : '倒计时'}` 
-    : (r.running ? `${formatDigital(Math.max(0, r.next - now), true)} · 提醒` : '计时器');
-  if (document.title !== titlePrefix) document.title = titlePrefix;
+ }
+ const r=state.reminder;
+ if (r.running && now >= r.next) {
+  r.last=now;r.next+=(Math.floor((now-r.next)/r.interval)+1)*r.interval;notify('间隔提醒 · '+clockText(new Date(now)));changed=true;
+ }
+ if (changed) {renderControls();save();}
 }
+function addMinutesToTimer(minutes) {
+ if (state.mode !== 'duration') return;
+ const now=Date.now();updateRunningTimers(now);
+ const t=state.timers.duration;
+ if (t.status === 'idle') {
+  const h=integer('hours',0,999,true),m=integer('minutes',0,59,true),s=integer('seconds',0,59,true);
+  if ([h,m,s].includes(null)) {showError('timer','请先修正无效时长。');return;}
+  const seconds=Math.min(MAX_DURATION/1000,h*3600+m*60+s+minutes*60);
+  const values={hours:Math.floor(seconds/3600),minutes:Math.floor(seconds/60)%60,seconds:seconds%60};
+  for (const [id,value] of Object.entries(values)) {$(id).value=String(value);state.settings[id]=String(value);}
+ } else {
+  const add=Math.min(minutes*60000,MAX_DURATION-t.total);
+  if (add <= 0) {toast('已达到最大时长。');return;}
+  t.total+=add;
+  if (t.status === 'paused') t.remaining+=add;
+  else {t.end+=add;if (t.status === 'overtime' && t.end > now) {t.status='running';t.notified=false;}}
+  toast('已增加 '+Math.round(add/60000)+' 分钟');
+ }
+ showError('timer');renderControls();save();tick();
+}
+document.querySelectorAll('[data-add-minutes]').forEach(button => button.onclick=() => addMinutesToTimer(Number(button.dataset.addMinutes)));
+function formatSpan(ms,past=false) {
+ const round=past ? Math.floor : Math.ceil;
+ const unit=(n,label) => '<span class="num">'+n+'</span><span class="unit">'+label+'</span>';
+ const prefix=past ? '<span class="prefix-plus">+</span>' : '';
+ if (ms < 60000) return prefix+unit(Math.max(0,round(ms/1000)),'s');
+ if (ms >= 86400000) {
+  const hours=round(ms/3600000), days=Math.floor(hours/24), remainder=hours%24;
+  return prefix+unit(days,'天')+(remainder ? unit(remainder,'h') : '');
+ }
+ const minutes=round(ms/60000),hours=Math.floor(minutes/60),remainder=minutes%60;
+ return prefix+(hours ? unit(hours,'h') : '')+(remainder || !hours ? unit(remainder,'min') : '');
+}
+function toggleTimeFormat() {
+ if (state.mode === 'stopwatch') return;
+ const key=state.mode === 'deadline' ? 'deadlineCompactMode' : 'durationCompactMode';
+ state[key]=!state[key];save();tick();
+}
+$('timer-time-wrap').onclick=toggleTimeFormat;
+$('timer-time-wrap').addEventListener('keydown',event => {if (event.key === 'Enter' || event.key === ' ') {event.preventDefault();toggleTimeFormat();}});
+$('timer-start').onclick=() => {
+ void unlockAudio();const now=Date.now();updateRunningTimers(now);
+ if (state.mode === 'stopwatch') {
+  const s=state.stopwatch;
+  if (s.status === 'running') {s.elapsed=stopwatchElapsed(now);s.startedAt=0;s.status='paused';}
+  else {s.startedAt=now;s.status='running';}
+ } else {
+  const mode=state.mode,t=state.timers[mode];
+  if (t.status === 'running') {t.remaining=Math.max(0,t.end-now);t.status='paused';}
+  else if (t.status === 'paused') {t.end=now+t.remaining;t.status='running';}
+  else if (['overtime','past'].includes(t.status)) state.timers[mode]=idleTimer(mode);
+  else {
+   const value=timerValue(mode,now);
+   if (value.error) {showError('timer',value.error);return;}
+   state.timers[mode]={status:value.isPast ? 'past' : 'running',mode,end:value.end,total:value.ms,remaining:value.ms,notified:value.isPast,isPast:value.isPast};
+  }
+ }
+ showError('timer');renderControls();save();tick();
+};
+$('timer-reset').onclick=() => {
+ if (state.mode === 'stopwatch') {
+  if (state.stopwatch.status === 'running') return;
+  state.stopwatch={status:'idle',elapsed:0,startedAt:0,laps:[]};renderLaps();
+ } else state.timers[state.mode]=idleTimer(state.mode);
+ showError('timer');renderControls();save();tick();
+};
+$('timer-lap').onclick=() => {
+ const s=state.stopwatch;if (s.status !== 'running') return;
+ const elapsed=stopwatchElapsed(),previous=s.laps.length ? s.laps[s.laps.length-1].elapsed : 0;
+ if (elapsed <= previous) return;
+ s.laps.push({elapsed,split:elapsed-previous});renderLaps();save();
+};
+$('reminder-toggle').onclick=() => {
+ void unlockAudio();const r=state.reminder;
+ if (r.running) {r.running=false;r.next=0;}
+ else {const value=intervalValue();if (value.error) {showError('reminder',value.error);return;}r.running=true;r.interval=value.ms;r.next=Date.now()+value.ms;}
+ showError('reminder');renderControls();save();tick();
+};
+for (const id of ['hours','minutes','seconds']) {
+ $(id).value=state.settings[id];
+ $(id).addEventListener('input',() => {state.settings[id]=$(id).value;showError('timer');queueSave();tick();});
+}
+$('interval-value').value=state.settings.interval;$('interval-unit').value=state.settings.unit;
+$('interval-value').addEventListener('input',() => {state.settings.interval=$('interval-value').value;showError('reminder');queueSave();tick();});
+$('interval-unit').addEventListener('change',() => {state.settings.unit=$('interval-unit').value;showError('reminder');queueSave();tick();});
+document.querySelectorAll('input[type=number]').forEach(input => input.addEventListener('wheel',event => {if (document.activeElement === input) event.preventDefault();},{passive:false}));
 
-// 初始化
-renderSound();
-renderControls();
-initPickers();
-setTimeout(() => {
-  dateWheelCtrl.syncValue();
-  hourWheelCtrl.syncValue();
-  minWheelCtrl.syncValue();
-}, 60);
-
-tick();
-save();
-setInterval(tick, 250);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
-window.addEventListener('pageshow', tick);
+function tick() {
+ const now=Date.now(),date=new Date(now);ensureCalendar(date);updateRunningTimers(now);
+ setText('clock',clockText(date,state.clockShowSeconds));
+ $('clock').setAttribute('aria-label','当前时间 '+clockText(date,state.clockShowSeconds)+'，点击切换秒数');
+ setText('clock-date',(date.getMonth()+1)+'月'+date.getDate()+'日 · '+['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][date.getDay()]);
+ const stopwatch=state.mode === 'stopwatch',t=stopwatch ? state.stopwatch : state.timers[state.mode],section=document.querySelector('.timer');
+ let ratio=0,status='',end='',readout='',plain='',past=false,remaining=0;
+ for (const [name,value] of [['is-running',t.status === 'running'],['is-paused',t.status === 'paused'],['is-overtime',!stopwatch && t.status === 'overtime'],['is-past',!stopwatch && t.status === 'past'],['is-stopwatch',stopwatch]]) section.classList.toggle(name,value);
+ if (stopwatch) {
+  renderStopwatchReadout(now);plain=formatStopwatch(stopwatchElapsed(now));
+  status=t.status === 'running' ? '进行中' : t.status === 'paused' ? '已暂停' : '待开始';
+ } else {
+  if (t.status === 'running') {remaining=Math.max(0,t.end-now);ratio=remaining/t.total*100;status='进行中';end='结束于 '+endText(t.end);}
+  else if (t.status === 'paused') {remaining=t.remaining;ratio=t.total ? remaining/t.total*100 : 0;status='已暂停';}
+  else if (['overtime','past'].includes(t.status)) {remaining=Math.max(0,now-t.end);past=true;status='继续计时';end='继续计时';}
+  else {
+   const value=timerValue(state.mode,now);
+   if (!value.error) {remaining=value.ms;past=value.isPast;ratio=past ? 0 : 100;end=past ? '定点已过去' : '预计结束 '+endText(value.end);}
+   status='待开始';
+  }
+  const compact=state.mode === 'deadline' ? state.deadlineCompactMode : state.durationCompactMode;
+  readout=compact ? formatSpan(remaining,past) : (past ? '+' : '')+formatDigital(remaining,!past);
+  setHTML('timer-readout',readout);plain=$('timer-readout').textContent;
+  $('timer-readout').classList.toggle('long',plain.length>8);
+  $('timer-readout').setAttribute('aria-label',(past ? '已过去时间 ' : '剩余时间 ')+plain);
+ }
+ $('timer-readout').classList.toggle('past-mode',!stopwatch && past);
+ $('timer-readout').classList.toggle('overtime-mode',!stopwatch && t.status === 'overtime');
+ setText('timer-status',status);setText('timer-end',end);
+ $('timer-progress').hidden=stopwatch;
+ ratio=Math.max(0,Math.min(100,ratio));$('progress-fill').style.width=ratio+'%';$('timer-progress').setAttribute('aria-valuenow',String(Math.round(ratio)));
+ $('wave-front').style.display=!stopwatch && ['running','paused'].includes(t.status) && ratio>0 ? 'block' : 'none';
+ if (state.reminder.running) setText('reminder-readout',formatDigital(Math.max(0,state.reminder.next-now)));
+ renderTabs();
+ let title='计时器';
+ if (t.status !== 'idle') title=plain+' · '+modeNames[state.mode];
+ else {
+  const background=['duration','deadline'].find(mode => state.timers[mode].status === 'running');
+  if (background) title=formatDigital(Math.max(0,state.timers[background].end-now))+' · '+modeNames[background];
+  else if (state.stopwatch.status === 'running') title=formatStopwatch(stopwatchElapsed(now))+' · 段计时';
+  else if (state.reminder.running) title=formatDigital(Math.max(0,state.reminder.next-now))+' · 提醒';
+ }
+ if (document.title !== title) document.title=title;
+ syncStopwatchAnimation();
+}
+initPickers();renderSound();renderLaps();renderControls();tick();
+if (state.mode === 'deadline') {dateWheelCtrl.syncValue();hourWheelCtrl.syncValue();minWheelCtrl.syncValue();}
+save();setInterval(tick,250);
+document.addEventListener('visibilitychange',() => {syncStopwatchAnimation();if (!document.hidden) tick();});
+window.addEventListener('pageshow',tick);
 })();
+
 </script>
 </body></html>
