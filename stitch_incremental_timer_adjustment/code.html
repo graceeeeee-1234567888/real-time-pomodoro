@@ -312,14 +312,15 @@ h1{font-size:18px;font-weight:600;letter-spacing:.06em}
 .secondary:hover:not(:disabled){background:var(--soft);color:var(--ink)}
 .end-time{font-weight:600;margin-top:14px;color:var(--muted);font-size:12px;min-height:18px;font-variant-numeric:tabular-nums}
 .reminder{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:22px 0}
-.reminder-row{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.reminder-row{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
 .reminder-fields{display:flex;align-items:center;gap:8px}
 .reminder-fields label,.reminder-fields .suffix{color:var(--muted);white-space:nowrap}
 .reminder-fields input{width:58px;text-align:center;padding:6px 4px}
 .reminder-fields select{width:76px;padding:6px 4px}
-.reminder-controls{display:flex;gap:12px;align-items:center;margin-left:auto}
+.reminder-controls{display:flex;gap:8px;align-items:center}
 .reminder-countdown{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-.reminder-toggle{border:1px solid var(--line);font-size:13px;white-space:nowrap;padding:8px 16px}
+.reminder-toggle{width:40px;min-width:40px;height:40px;min-height:40px;flex-shrink:0;border:1px solid var(--line);border-radius:50%;padding:0}
+.reminder-toggle svg{width:18px;height:18px}
 .reminder-toggle[aria-pressed=true]{background:var(--soft);border-color:var(--soft);color:var(--accent)}
 footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 .toasts{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);z-index:20;pointer-events:none;display:flex;flex-direction:column;gap:8px}
@@ -340,7 +341,7 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
  .presets button{min-height:22px;height:22px;padding:0 6px;font-size:10px}
  .reminder-row{gap:12px}
  .reminder-controls{gap:8px}
- .reminder-toggle{padding:7px 12px}
+ .reminder-toggle{padding:0}
 }
 @media(prefers-reduced-motion:reduce){
  *,*::before,*::after{animation:none!important;transition:none!important}
@@ -483,10 +484,10 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 <input aria-describedby="reminder-error" aria-label="提醒间隔" id="interval-value" inputmode="numeric" max="999" min="1" step="1" type="number" value="5"/>
 <select aria-label="提醒间隔单位" id="interval-unit"><option value="1000">秒</option><option selected="" value="60000">分钟</option><option value="3600000">小时</option></select>
 <span class="suffix">提醒</span>
+<button aria-pressed="false" aria-label="启动提醒" title="启动提醒" class="reminder-toggle" id="reminder-toggle"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg></button>
 </div>
 <div class="reminder-controls">
 <span aria-label="距下次提醒" aria-live="off" class="reminder-countdown" hidden="" id="reminder-readout" role="timer"></span>
-<button aria-pressed="false" class="reminder-toggle" id="reminder-toggle">启动提醒</button>
 </div>
 </div>
 <p class="error" id="reminder-error" role="alert"></p>
@@ -518,7 +519,7 @@ function formatStopwatch(ms) {
 }
 function endText(ms) {
  const d = new Date(ms), today = new Date();
- return (dateValue(d) === dateValue(today) ? '' : (d.getFullYear() === today.getFullYear() ? '' : d.getFullYear()+'年')+(d.getMonth()+1)+'月'+d.getDate()+'日 ')+clockText(d);
+ return (dateValue(d) === dateValue(today) ? '' : (d.getFullYear() === today.getFullYear() ? '' : d.getFullYear()+'年')+(d.getMonth()+1)+'月'+d.getDate()+'日 ')+clockText(d,false);
 }
 const idleTimer = mode => ({status:'idle',mode,end:0,total:0,remaining:0,notified:false,isPast:false});
 const nextHour = new Date(Date.now()+3600000); nextHour.setMinutes(0,0,0);
@@ -667,10 +668,19 @@ function intervalValue() {
  return value !== null && [1000,60000,3600000].includes(unit) ? {ms:value*unit} : {error:'间隔请输入 1–999 的整数。'};
 }
 const errors = {duration:'',deadline:'',stopwatch:''};
+const rejectedDurationInput = {hours:false,minutes:false,seconds:false};
+function durationInputMessage() {
+ if (rejectedDurationInput.minutes || rejectedDurationInput.seconds) return '分钟和秒请输入 0–59 的整数。';
+ if (rejectedDurationInput.hours) return '小时请输入 0–999 的整数。';
+ return '';
+}
 function showError(type,message='') {
  if (type === 'reminder') { $('reminder-error').textContent = message; $('interval-value').setAttribute('aria-invalid',String(Boolean(message))); return; }
+ if (state.mode === 'duration') {
+  message = durationInputMessage() || message;
+  for (const [id,min,max] of [['hours',0,999],['minutes',0,59],['seconds',0,59]]) $(id).setAttribute('aria-invalid',String(rejectedDurationInput[id] || integer(id,min,max,true) === null));
+ }
  errors[state.mode] = message; $('timer-error').textContent = message;
- if (state.mode === 'duration') for (const id of ['hours','minutes','seconds']) $(id).setAttribute('aria-invalid',String(Boolean(message)));
 }
 function setText(id,text) { const node = $(id); if (node.textContent !== text) node.textContent = text; }
 function setHTML(id,html) { const node = $(id); if (node.innerHTML !== html) node.innerHTML = html; }
@@ -824,11 +834,14 @@ function renderControls() {
  $('timer-error').textContent=errors[state.mode];
  $('lap-records').hidden=!stopwatch || !state.stopwatch.laps.length;
  $('interval-value').disabled=state.reminder.running;$('interval-unit').disabled=state.reminder.running;
- $('reminder-toggle').textContent=state.reminder.running ? '停止提醒' : '启动提醒';$('reminder-toggle').setAttribute('aria-pressed',String(state.reminder.running));$('reminder-readout').hidden=!state.reminder.running;
+ const reminderLabel=state.reminder.running ? '停止提醒' : '启动提醒';
+ $('reminder-toggle').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'+(state.reminder.running ? '<rect x="7" y="7" width="10" height="10" rx="1"/>' : playPath)+'</svg>';
+ $('reminder-toggle').setAttribute('aria-label',reminderLabel);$('reminder-toggle').title=reminderLabel;
+ $('reminder-toggle').setAttribute('aria-pressed',String(state.reminder.running));$('reminder-readout').hidden=!state.reminder.running;
  const wrap=$('timer-time-wrap');
  wrap.style.cursor=stopwatch ? 'default' : 'pointer';wrap.tabIndex=stopwatch ? -1 : 0;
  if (stopwatch) {wrap.removeAttribute('role');wrap.removeAttribute('aria-label');wrap.removeAttribute('title');}
- else {wrap.setAttribute('role','button');wrap.setAttribute('aria-label','切换'+modeNames[state.mode]+'时间显示方式');wrap.title='点击切换精确时间与跨度单位';}
+ else {wrap.setAttribute('role','button');wrap.setAttribute('aria-label','切换'+modeNames[state.mode]+'时间显示方式');wrap.title='点击切换精确时间';}
  renderTabs();syncStopwatchAnimation();
 }
 for (const mode of MODES) $('mode-'+mode).onclick=() => {
@@ -902,6 +915,7 @@ $('timer-start').onclick=() => {
   else if (t.status === 'paused') {t.end=now+t.remaining;t.status='running';}
   else if (['overtime','past'].includes(t.status)) state.timers[mode]=idleTimer(mode);
   else {
+   if (mode === 'duration' && Object.values(rejectedDurationInput).some(Boolean)) {showError('timer');return;}
    const value=timerValue(mode,now);
    if (value.error) {showError('timer',value.error);return;}
    state.timers[mode]={status:value.isPast ? 'past' : 'running',mode,end:value.end,total:value.ms,remaining:value.ms,notified:value.isPast,isPast:value.isPast};
@@ -928,9 +942,19 @@ $('reminder-toggle').onclick=() => {
  else {const value=intervalValue();if (value.error) {showError('reminder',value.error);return;}r.running=true;r.interval=value.ms;r.next=Date.now()+value.ms;}
  showError('reminder');renderControls();save();tick();
 };
-for (const id of ['hours','minutes','seconds']) {
- $(id).value=state.settings[id];
- $(id).addEventListener('input',() => {state.settings[id]=$(id).value;showError('timer');queueSave();tick();});
+for (const [id,min,max] of [['hours',0,999],['minutes',0,59],['seconds',0,59]]) {
+ const input=$(id);input.value=state.settings[id];
+ input.addEventListener('input',() => {
+  const raw=input.value,value=integer(id,min,max,true);
+  if (value === null) {
+   rejectedDurationInput[id]=true;
+   input.value=state.settings[id];
+  } else {
+   rejectedDurationInput[id]=false;
+   state.settings[id]=raw;
+  }
+  showError('timer');queueSave();tick();
+ });
 }
 $('interval-value').value=state.settings.interval;$('interval-unit').value=state.settings.unit;
 $('interval-value').addEventListener('input',() => {state.settings.interval=$('interval-value').value;showError('reminder');queueSave();tick();});
