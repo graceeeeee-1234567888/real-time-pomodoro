@@ -1254,6 +1254,12 @@ function formatSpan(ms,past=false) {
  const minutes=round(ms/60000),hours=Math.floor(minutes/60),remainder=minutes%60;
  return prefix+(hours ? unit(hours,'h') : '')+(remainder || !hours ? unit(remainder,'min') : '');
 }
+function formatRelayTotal(ms) {
+ const seconds=Math.max(0,Math.round(ms/1000));
+ const hours=Math.floor(seconds/3600),minutes=Math.floor(seconds%3600/60),remainder=seconds%60;
+ const unit=(n,label) => '<span class="num">'+n+'</span><span class="unit">'+label+'</span>';
+ return (hours ? unit(hours,'h') : '')+(minutes ? unit(minutes,'min') : '')+(remainder ? unit(remainder,'s') : '') || unit(0,'s');
+}
 function toggleTimeFormat() {
  if (state.mode === 'relay') return;
  const key=state.mode === 'deadline' ? 'deadlineCompactMode' : 'durationCompactMode';
@@ -1454,8 +1460,8 @@ function tick() {
  let ratio=0,end='',readout='',plain='',past=false,remaining=0;
  for (const [name,value] of [['is-running',t.status === 'running'],['is-paused',t.status === 'paused'],['is-overtime',!relay && t.status === 'overtime'],['is-past',!relay && t.status === 'past'],['is-relay',relay]]) section.classList.toggle(name,value);
  if (relay) {
-  remaining=state.relay.tasks.reduce((sum,task) => sum+task.duration,0);plain=formatDigital(remaining);setText('timer-readout',plain);
-  $('timer-readout').classList.toggle('long',plain.length>8);
+  remaining=state.relay.tasks.reduce((sum,task) => sum+task.duration,0);readout=formatRelayTotal(remaining);setHTML('timer-readout',readout);plain=$('timer-readout').textContent;
+  $('timer-readout').classList.remove('long');
   $('timer-readout').setAttribute('aria-label','任务接力共需 '+plain);
   renderRelayProgress(now);
  } else {
