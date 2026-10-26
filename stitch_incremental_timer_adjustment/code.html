@@ -61,7 +61,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:.06em}
 
 /* 主读数显示卡片与波浪进度槽 */
 .readout{position:relative;isolation:isolate;max-width:560px;min-height:210px;margin:28px auto 24px;padding:34px 16px;display:flex;flex-direction:column;justify-content:center;user-select:none}
-.readout .timer-time-wrap,.readout .timer-status{position:relative;z-index:2}
+.readout .timer-time-wrap{position:relative;z-index:2}
 .timer-time-wrap{display:inline-flex;align-items:baseline;justify-content:center;margin:0 auto;cursor:pointer;flex-wrap:nowrap}
 .timer-time{font-size:clamp(56px,12.5vw,112px);line-height:1.08;font-weight:700;letter-spacing:-.055em;font-variant-numeric:tabular-nums;white-space:nowrap;transition:color .25s ease}
 .timer-time.long{font-size:clamp(34px,8vw,70px);letter-spacing:-.03em}
@@ -90,7 +90,7 @@ h1{font-size:18px;font-weight:600;letter-spacing:.06em}
 .timer-time .unit:last-child{margin-right:0}
 .timer-time .prefix-plus{font-size:0.75em;margin-right:4px;vertical-align:baseline;font-weight:700}
 
-.timer-status{color:var(--muted);font-size:12px;min-height:18px;margin-top:10px;font-weight:500;letter-spacing:.02em;transition:opacity .2s,color .25s}
+.timer-status{position:absolute;left:0;right:0;bottom:calc(100% + 3px);height:18px;line-height:18px;margin:0;z-index:2;color:var(--muted);font-size:12px;font-weight:500;letter-spacing:.02em;pointer-events:none;transition:opacity .2s,color .25s}
 .timer-status:empty,.end-time:empty{display:none}
 
 /* 进度条与流淌波浪前锋动效 */
@@ -308,9 +308,18 @@ h1{font-size:18px;font-weight:600;letter-spacing:.06em}
 .actions button svg{width:22px;height:22px}
 .primary{background:var(--accent);color:#fff}
 .primary:hover:not(:disabled){background:#264836;color:#fff;transform:scale(1.02)}
+#timer-start[data-action=pause]{background:var(--soft);color:var(--accent);border-color:#a5b9ab;box-shadow:none}
+#timer-start[data-action=pause]:hover:not(:disabled){background:#dae6d9;color:#264836}
+.deadline-tools{display:flex;justify-content:center;margin-top:4px}
+.deadline-more{width:40px;height:40px;min-height:40px;padding:0;border:0;background:transparent;color:#8a958d;transition:color .18s}
+.deadline-more:hover:not(:disabled){color:var(--accent);background:transparent}
+.deadline-more[aria-expanded=true]{color:var(--accent)}
+.deadline-more[aria-expanded=true]:hover:not(:disabled){color:#172f22}
+.deadline-more svg{width:20px;height:20px}
 .secondary{border-color:var(--line);background:var(--bg);color:var(--muted)}
 .secondary:hover:not(:disabled){background:var(--soft);color:var(--ink)}
 .end-time{font-weight:600;margin-top:14px;color:var(--muted);font-size:12px;min-height:18px;font-variant-numeric:tabular-nums}
+.timer.is-paused:not(.is-relay) .end-time:empty{display:block}
 .reminder{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:22px 0}
 .reminder-row{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap}
 .reminder-fields{display:flex;align-items:center;gap:8px}
@@ -348,8 +357,6 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 }
 
 .tabs button{position:relative}
-.tabs button::after{content:"";position:absolute;right:7px;top:50%;width:4px;height:4px;margin-top:-2px;border-radius:50%;background:var(--accent);visibility:hidden}
-.tabs button[data-background-running=true]::after{visibility:visible}
 .timer-time-wrap:focus-visible,.picker-col:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
 .deadline-layout{display:grid;grid-template-columns:36px minmax(0,1fr);gap:4px;align-items:center}
 .return-today{width:36px;height:36px;min-height:36px;padding:0;color:#87948a;background:transparent;border:0;border-radius:6px}
@@ -379,7 +386,7 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 .timer.is-relay .settings{max-width:560px}
 .timer.is-relay .end-time{display:none}
 .relay-current{position:relative;z-index:2;max-width:100%;font-size:14px;color:var(--muted);margin-top:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.relay-track{display:flex;gap:4px;width:100%;margin-top:22px;min-height:44px;position:relative;z-index:3;touch-action:pan-y}
+.relay-track{display:flex;overflow:clip;gap:4px;width:100%;margin-top:22px;min-height:44px;position:relative;z-index:3;touch-action:pan-y}
 .relay-piece{position:relative;isolation:isolate;flex:1 1 0;min-width:0;height:44px;min-height:44px;padding:0 5px;border:0;border-radius:3px;overflow:hidden;background:var(--task-tint);color:var(--ink);cursor:grab;touch-action:none;transition:box-shadow .16s,opacity .16s}
 .relay-piece:hover:not(:disabled){background:var(--task-tint);box-shadow:inset 0 0 0 1px var(--task-color)}
 .relay-piece[data-fixed=true]{cursor:default}
@@ -390,25 +397,26 @@ footer{padding:18px 0 28px;color:var(--muted);font-size:11px;text-align:center}
 .relay-drag-ghost{position:fixed;z-index:1000;pointer-events:none;margin:0;opacity:.96;box-shadow:0 8px 22px #23392e26;cursor:grabbing;transform:scale(1.04);transition:none}
 body.relay-dragging{cursor:grabbing;user-select:none}
 .relay-options{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:0 0 12px}
+#relay-loop svg{width:14px;height:14px}
 #relay-loop{color:#999;background:transparent;border:0;transition:color .18s}
 #relay-loop:hover:not(:disabled){color:#777;background:transparent}
 #relay-loop[aria-pressed=true]{color:#234f35}
 #relay-loop[aria-pressed=true]:hover:not(:disabled){color:#173d27;background:transparent}
 .relay-auto{display:flex;flex-direction:column;align-items:center}
-.relay-auto-label{font-size:10px;line-height:1.4;color:var(--muted);white-space:nowrap}
+.relay-auto-label{font-size:9px;line-height:1.4;color:var(--muted);white-space:nowrap}
 .relay-switch{width:44px;height:44px;min-height:44px;padding:0;border:0;border-radius:8px;background:transparent}
 .relay-switch:hover:not(:disabled){background:transparent}
-.relay-switch-track{position:relative;display:block;width:40px;height:22px;border-radius:999px;background:var(--line);transition:background-color .18s ease}
-.relay-switch-track::after{content:"";position:absolute;left:2px;top:2px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #23392e1a;transform:translateX(0);transition:transform .18s cubic-bezier(.2,.8,.2,1)}
+.relay-switch-track{position:relative;display:block;width:32px;height:18px;border-radius:999px;background:var(--line);transition:background-color .18s ease}
+.relay-switch-track::after{content:"";position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #23392e1a;transform:translateX(0);transition:transform .18s cubic-bezier(.2,.8,.2,1)}
 .relay-switch[aria-checked=true] .relay-switch-track{background:var(--accent)}
-.relay-switch[aria-checked=true] .relay-switch-track::after{transform:translateX(18px)}
+.relay-switch[aria-checked=true] .relay-switch-track::after{transform:translateX(14px)}
 .relay-tasks{display:flex;flex-direction:column;gap:8px}
-.relay-task{display:grid;grid-template-columns:24px minmax(0,1fr) 48px;gap:6px;align-items:center;padding:5px 8px;border:1px solid var(--line);border-radius:8px;text-align:left;position:relative}
-.relay-task-body{display:grid;grid-template-columns:minmax(0,6fr) minmax(0,4fr);gap:6px;align-items:center;min-width:0}
+.relay-task{display:grid;grid-template-columns:24px minmax(0,1fr) auto;gap:6px;align-items:center;padding:5px 8px;border:1px solid var(--line);border-radius:8px;text-align:left;position:relative}
+.relay-task-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;align-items:center;min-width:0}
 .relay-task[data-current=true]{border-color:var(--task-color)}
-.relay-task[data-complete=true]{opacity:.65}
+.relay-task[data-complete=true] .relay-task-body,.relay-task[data-complete=true] .relay-task-tools{opacity:.65}
 .relay-color{position:relative;width:24px;height:34px;display:flex;align-items:center;justify-content:center}
-.relay-color::before{content:attr(data-sequence);font-size:var(--sequence-size,14px);font-weight:600;line-height:1;color:var(--task-color);opacity:1;font-variant-numeric:tabular-nums;pointer-events:none}
+.relay-color::before{content:attr(data-sequence);font-size:var(--sequence-size,14px);font-weight:800;line-height:1;color:var(--task-color);-webkit-text-stroke:.3px currentColor;opacity:1;font-variant-numeric:tabular-nums;pointer-events:none}
 .relay-color input{position:absolute;inset:0;width:100%;height:100%;min-height:0;opacity:0;cursor:pointer;padding:0;border:0}
 .relay-color:focus-within{outline:2px solid var(--accent);border-radius:6px}
 .relay-name{width:100%;min-height:32px;border:0;border-radius:4px;padding:3px 5px;font-size:13px;background:transparent}
@@ -417,14 +425,19 @@ body.relay-dragging{cursor:grabbing;user-select:none}
 .relay-time-fields label span{flex-shrink:0}
 .relay-time-fields input{width:100%;min-width:0;min-height:30px;padding:3px 1px;text-align:center;border-radius:5px;font-size:12px}
 .relay-time-fields label:first-child input{width:100%}
-.relay-task-tools{grid-column:3;grid-row:1;display:flex;flex-direction:column;align-items:center;gap:0}
+.relay-task-tools{grid-column:3;grid-row:1;display:flex;align-items:center;gap:2px;margin-left:10px}
 .relay-task-tools button{width:24px;height:24px;min-height:24px;padding:4px;color:var(--muted);border-radius:5px}
 .relay-task-tools svg{width:15px;height:15px}
 .relay-row-actions{display:flex}
+.relay-task-tools .relay-drag-handle{width:30px;height:30px;min-height:30px;padding:7px;cursor:grab;touch-action:none}
+.relay-task-tools .relay-drag-handle:disabled{cursor:default}
+.relay-task.drag-slot{opacity:.25;outline:1px dashed var(--task-color);outline-offset:-1px}
+.relay-row-drag-ghost{background:var(--bg);transform:scale(1.015)}
+.relay-drag-ghost *{pointer-events:none!important}
 .relay-task-error{grid-column:2 / -1;color:var(--error);font-size:11px}
 .relay-task-error:empty{display:none}
 .relay-add{margin:10px auto 0}
-@media(max-width:560px){.relay-track{gap:3px}.relay-piece{padding:0 3px}.relay-piece .relay-piece-name{font-size:10px}.relay-task{padding:6px;gap:3px 4px;grid-template-columns:20px minmax(0,1fr)}.relay-color{width:20px}.relay-time-fields{gap:2px}.relay-time-fields label{gap:1px;font-size:9px}.relay-time-fields input{font-size:10px;min-height:30px}.relay-task-tools{grid-column:2;grid-row:2;flex-direction:row;justify-content:flex-end;gap:4px;width:100%}.relay-task-tools button{width:28px;height:24px;min-height:24px}}
+@media(max-width:560px){.relay-track{gap:3px}.relay-piece{padding:0 3px}.relay-piece .relay-piece-name{font-size:10px}.relay-task{padding:6px;gap:3px 4px;grid-template-columns:20px minmax(0,1fr)}.relay-color{width:20px}.relay-time-fields{gap:2px}.relay-time-fields label{gap:1px;font-size:9px}.relay-time-fields input{font-size:10px;min-height:30px}.relay-task-tools{grid-column:2;grid-row:2;flex-direction:row;justify-content:flex-end;gap:4px;width:100%;margin-left:0;margin-top:6px}.relay-task-tools button{width:28px;height:24px;min-height:24px}}
 
 </style>
 </head>
@@ -448,6 +461,7 @@ body.relay-dragging{cursor:grabbing;user-select:none}
 <button aria-pressed="false" id="mode-relay">任务接力</button>
 </div>
 <div class="readout">
+<p class="timer-status" id="timer-status" role="status"></p>
 <div aria-label="剩余时间比例" aria-valuemax="100" aria-valuemin="0" aria-valuenow="0" class="progress" id="timer-progress" role="progressbar">
 <div class="progress-fill" id="progress-fill" style="width: 0%;">
 <div class="wave-front" id="wave-front" style="display: none;">
@@ -460,7 +474,6 @@ body.relay-dragging{cursor:grabbing;user-select:none}
 <div aria-label="剩余时间" aria-live="off" class="timer-time" id="timer-readout" role="timer">25:00</div>
 </div>
 <p class="relay-current" id="relay-current" hidden></p>
-<p class="timer-status" id="timer-status" role="status"></p>
 <div class="relay-track" id="relay-track" role="group" aria-label="任务接力进度，拖动或按左右方向键调整后续顺序" hidden></div>
 <span class="sr-only" id="relay-announcement" aria-live="polite"></span>
 </div>
@@ -488,7 +501,7 @@ body.relay-dragging{cursor:grabbing;user-select:none}
 </div>
 <!-- 定点面板：iOS 原生拟物滚轮选择器 -->
 <div hidden="" id="deadline-panel">
-<div class="deadline-layout">
+<div class="deadline-layout" id="deadline-picker">
 <button class="return-today" id="return-today" aria-label="回到今天" title="回到今天"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3v4m8-4v4M5 10h14M7 21H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6M14 15l-3 3 3 3m-3-3h6a4 4 0 0 0 4-4"/></svg></button>
 <div class="ios-picker-wrapper">
 <div class="ios-picker-highlight"></div>
@@ -511,6 +524,7 @@ body.relay-dragging{cursor:grabbing;user-select:none}
 </div>
 </div>
 </div>
+<div class="deadline-tools" id="deadline-tools" hidden><button class="deadline-more" id="deadline-more" type="button" aria-label="修改目标时间" title="修改目标时间" aria-expanded="false" aria-controls="deadline-picker"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button></div>
 </div>
 <div id="relay-panel" hidden>
 <div class="relay-options"><div class="relay-auto"><span class="relay-auto-label" id="relay-auto-label">自动下一项</span><button class="relay-switch" id="relay-pause-between" type="button" role="switch" aria-checked="true" aria-labelledby="relay-auto-label" title="到点提醒并自动开始下一项"><span class="relay-switch-track" aria-hidden="true"></span></button></div><button class="icon-button" id="relay-loop" aria-pressed="false" aria-label="列表循环 开" title="列表循环 开"></button></div>
@@ -740,6 +754,33 @@ function showError(type,message='') {
 function setText(id,text) { const node = $(id); if (node.textContent !== text) node.textContent = text; }
 function setHTML(id,html) { const node = $(id); if (node.innerHTML !== html) node.innerHTML = html; }
 
+
+let deadlineEditorOpen=false;
+function syncDeadlinePickers() {
+ dateWheelCtrl.syncValue();hourWheelCtrl.syncValue();minWheelCtrl.syncValue();
+}
+function retargetDeadline(now=Date.now()) {
+ const t=state.timers.deadline;
+ if (t.status === 'idle') return true;
+ const value=timerValue('deadline',now);
+ if (value.error) {showError('timer',value.error);return false;}
+ const paused=t.status === 'paused' && !value.isPast;
+ state.timers.deadline={status:paused ? 'paused' : value.isPast ? 'past' : 'running',mode:'deadline',end:value.end,total:value.ms,remaining:value.ms,notified:value.isPast,isPast:value.isPast};
+ showError('timer');renderControls();return true;
+}
+$('deadline-more').onclick=() => {
+ deadlineEditorOpen=!deadlineEditorOpen;
+ const t=state.timers.deadline;
+ if (deadlineEditorOpen && t.status !== 'idle') {
+  const target=new Date(t.end);
+  state.settings.date=dateValue(target);state.settings.hour=pad(target.getHours());state.settings.minute=pad(target.getMinutes());
+  buildDateOptions();dateWheelCtrl.refresh();
+ }
+ renderControls();
+ if (deadlineEditorOpen) syncDeadlinePickers();
+ save();tick();
+};
+
 // Calendar arithmetic keeps wheel dates correct across daylight-saving changes.
 const dateOptions = [];
 let datesBuiltFor = '', dateWheelCtrl, hourWheelCtrl, minWheelCtrl;
@@ -823,7 +864,7 @@ function setupWheel(colId,contentId,options,getValue,onSelect,label) {
 }
 function initPickers() {
  buildDateOptions();
- const onChange = key => value => {state.settings[key]=value;errors.deadline='';$('timer-error').textContent=errors[state.mode];queueSave();tick();};
+ const onChange = key => value => {state.settings[key]=value;errors.deadline='';$('timer-error').textContent=errors[state.mode];retargetDeadline();queueSave();tick();};
  dateWheelCtrl=setupWheel('picker-col-date','picker-content-date',dateOptions,() => state.settings.date,onChange('date'),'目标日期');
  hourWheelCtrl=setupWheel('picker-col-hour','picker-content-hour',hourOptions,() => pad(Number(state.settings.hour)),onChange('hour'),'目标小时');
  minWheelCtrl=setupWheel('picker-col-minute','picker-content-minute',minuteOptions,() => pad(Number(state.settings.minute)),onChange('minute'),'目标分钟');
@@ -832,9 +873,10 @@ function ensureCalendar(now=new Date()) {
  if (dateValue(now) !== datesBuiltFor) {buildDateOptions(now);dateWheelCtrl.refresh();}
 }
 $('return-today').onclick = () => {
- if (state.timers.deadline.status !== 'idle') return;
+ if (state.timers.deadline.status !== 'idle' && !deadlineEditorOpen) return;
  const today = new Date();ensureCalendar(today);
- state.settings.date=dateValue(today);dateWheelCtrl.syncValue(true);showError('timer');save();tick();
+ const changed=state.settings.date !== dateValue(today);
+ state.settings.date=dateValue(today);dateWheelCtrl.syncValue(true);showError('timer');if (changed) retargetDeadline();save();tick();
 };
 
 const playPath = '<path d="m8 5 11 7-11 7z"/>';
@@ -844,7 +886,7 @@ function modeIsRunning(mode) { return mode === 'relay' ? state.relay.status === 
 function renderTabs() {
  for (const mode of MODES) {
   const tab=$('mode-'+mode), background=state.mode !== mode && modeIsRunning(mode);
-  tab.disabled=false;tab.setAttribute('aria-pressed',String(state.mode === mode));tab.dataset.backgroundRunning=String(background);
+  tab.disabled=false;tab.setAttribute('aria-pressed',String(state.mode === mode));
   tab.setAttribute('aria-label',modeNames[mode]+(background ? '，后台运行中' : ''));
  }
 }
@@ -967,7 +1009,7 @@ function relayAnimateOrder(container,order,animate=true) {
   if (animate && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
    for (const node of container.children) {
     const before=old.get(node.dataset.id),after=node.getBoundingClientRect();
-    if (!before || (relayDrag && relayDrag.id === node.dataset.id && container.id === 'relay-track')) continue;
+    if (!before || (relayDrag && relayDrag.id === node.dataset.id && container === relayDrag.container)) continue;
     const x=before.left-after.left,y=before.top-after.top;
     if (Math.abs(x)+Math.abs(y)<.5) continue;
     for (const animation of node.getAnimations()) animation.cancel();
@@ -984,12 +1026,12 @@ function relayApplyOrder(ids,announce=false) {
  renderRelay(true);save();
  if (announce) setText('relay-announcement','顺序已调整');
 }
-function moveRelayTask(id,delta) {
+function moveRelayTask(id,delta,fromList=false) {
  const ids=state.relay.tasks.filter(t => relayCanMove(t.id)).map(t => t.id),index=ids.indexOf(id),target=index+delta;
  if (index<0 || target<0 || target>=ids.length) return;
  ids.splice(target,0,ids.splice(index,1)[0]);relayApplyOrder(ids,true);
- const piece=[...$('relay-track').children].find(node => node.dataset.id === id);
- piece?.focus({preventScroll:true});
+ const targetNode=[...$(fromList ? 'relay-tasks' : 'relay-track').children].find(node => node.dataset.id === id);
+ (fromList ? targetNode?.querySelector('.relay-drag-handle') : targetNode)?.focus({preventScroll:true});
 }
 function removeRelayTask(id) {
  const now=Date.now();updateRunningTimers(now);
@@ -1044,10 +1086,6 @@ function makeRelayRow(task) {
   span.textContent=unit;label.append(input,span);fields.append(label);
  });
  const tools=document.createElement('div');tools.className='relay-task-tools';
- const order=document.createElement('div');order.className='relay-row-actions';
- const up=relayIcon('向前移动','<path d="m14 6-6 6 6 6"/>',() => moveRelayTask(task.id,-1));up.dataset.action='up';
- const down=relayIcon('向后移动','<path d="m10 6 6 6-6 6"/>',() => moveRelayTask(task.id,1));down.dataset.action='down';
- order.append(up,down);
  const actions=document.createElement('div');actions.className='relay-row-actions';
  const restart=relayIcon('当前任务从头计时',relayResetPath,() => {
   const now=Date.now();updateRunningTimers(now);const r=state.relay;
@@ -1056,7 +1094,9 @@ function makeRelayRow(task) {
   r.elapsed=0;r.startedAt=r.status === 'running' ? now : 0;renderRelay();save();tick();
  });restart.dataset.action='restart';
  const remove=relayIcon('删除任务','<path d="m6 6 12 12M6 18 18 6"/>',() => removeRelayTask(task.id));
- actions.append(restart,remove);tools.append(order,actions);
+ const handle=relayIcon('拖动排序','<path d="M5 7h14M5 12h14M5 17h14"/>',() => {});
+ handle.className='relay-drag-handle';handle.dataset.action='drag';handle.setAttribute('aria-description','上下拖动排序，也可按上下方向键调整');
+ actions.append(restart,remove);tools.append(actions,handle);
  const error=document.createElement('p');error.className='relay-task-error';error.id='relay-error-'+task.id;error.setAttribute('role','alert');
  const body=document.createElement('div');body.className='relay-task-body';body.append(name,fields);
  row.append(colorLabel,body,tools,error);return row;
@@ -1084,9 +1124,8 @@ function renderRelay(animate=false) {
   const marker=row.querySelector('.relay-color'),colorInput=marker.querySelector('input');
   marker.dataset.sequence=String(sequenceIndex+1);marker.style.setProperty('--sequence-size',sequenceIndex>=99 ? '10px' : sequenceIndex>=9 ? '12px' : '14px');
   colorInput.title='第 '+(sequenceIndex+1)+' 项颜色';colorInput.setAttribute('aria-label',colorInput.title);
-  const movable=r.tasks.filter(t => relayCanMove(t.id)),index=movable.findIndex(t => t.id === task.id);
-  row.querySelector('[data-action=up]').disabled=fixed || index<=0;
-  row.querySelector('[data-action=down]').disabled=fixed || index<0 || index>=movable.length-1;
+  const movable=r.tasks.filter(t => relayCanMove(t.id));
+  row.querySelector('[data-action=drag]').disabled=fixed || movable.length<2;
   row.querySelector('[data-action=restart]').disabled=!current;
   if (!row.contains(document.activeElement)) {
    row.querySelector('.relay-name').value=task.name;row.querySelector('input[type=color]').value=task.color;
@@ -1113,14 +1152,18 @@ function renderRelayProgress(now=Date.now()) {
 
 function renderControls() {
  const relay=state.mode === 'relay',t=relay ? state.relay : state.timers[state.mode];
- const deadlineLocked=state.timers.deadline.status !== 'idle';
+ const deadlineLocked=state.timers.deadline.status !== 'idle',pickerLocked=deadlineLocked && !deadlineEditorOpen;
+ $('deadline-picker').hidden=pickerLocked;$('deadline-tools').hidden=!deadlineLocked;
+ $('deadline-more').setAttribute('aria-expanded',String(deadlineEditorOpen));
+ const editorLabel=deadlineEditorOpen ? '收起目标时间' : '修改目标时间';$('deadline-more').title=editorLabel;$('deadline-more').setAttribute('aria-label',editorLabel);
  $('duration-panel').hidden=state.mode !== 'duration';$('deadline-panel').hidden=state.mode !== 'deadline';$('relay-panel').hidden=!relay;
  $('relay-track').hidden=!relay;$('relay-current').hidden=!relay;
  for (const id of ['hours','minutes','seconds']) $(id).disabled=state.timers.duration.status !== 'idle';
- $('picker-columns').style.pointerEvents=deadlineLocked ? 'none' : 'auto';$('picker-columns').style.opacity=deadlineLocked ? '.6' : '1';
- for (const control of [dateWheelCtrl,hourWheelCtrl,minWheelCtrl]) control?.setDisabled(deadlineLocked);
- $('return-today').disabled=deadlineLocked;
+ $('picker-columns').style.pointerEvents=pickerLocked ? 'none' : 'auto';$('picker-columns').style.opacity='1';
+ for (const control of [dateWheelCtrl,hourWheelCtrl,minWheelCtrl]) control?.setDisabled(pickerLocked);
+ $('return-today').disabled=pickerLocked;
  const label=t.status === 'running' ? '暂停' : t.status === 'paused' ? '继续' : ['overtime','past'].includes(t.status) ? '完成' : '开始';
+ $('timer-start').dataset.action=t.status === 'running' ? 'pause' : 'start';
  const path=t.status === 'running' ? pausePath : ['overtime','past'].includes(t.status) ? completePath : playPath;
  $('timer-start').innerHTML='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'+path+'</svg>';
  $('timer-start').setAttribute('aria-label',label);$('timer-start').title=label;$('timer-start').disabled=relay && !state.relay.tasks.length;
@@ -1139,7 +1182,7 @@ function renderControls() {
 }
 
 for (const mode of MODES) $('mode-'+mode).onclick=() => {
- finishRelayDrag(false);state.mode=mode;renderRelay();renderControls();save();tick();
+ finishRelayDrag(false);deadlineEditorOpen=false;state.mode=mode;renderRelay();renderControls();save();tick();
  if (mode === 'deadline') {dateWheelCtrl.syncValue();hourWheelCtrl.syncValue();minWheelCtrl.syncValue();}
 };
 function updateRunningTimers(now) {
@@ -1221,23 +1264,25 @@ $('timer-start').onclick=() => {
    if (value.error) {showError('timer',value.error);return;}
    state.timers[mode]={status:value.isPast ? 'past' : 'running',mode,end:value.end,total:value.ms,remaining:value.ms,notified:value.isPast,isPast:value.isPast};
   }
+  if (mode === 'deadline') deadlineEditorOpen=false;
  }
  showError('timer');renderControls();save();tick();
 };
 $('timer-reset').onclick=() => {
  if (state.mode === 'relay') {finishRelayDrag(false);resetRelay();renderRelay();}
- else state.timers[state.mode]=idleTimer(state.mode);
+ else {state.timers[state.mode]=idleTimer(state.mode);if (state.mode === 'deadline') deadlineEditorOpen=false;}
  showError('timer');renderControls();save();tick();
 };
+
 
 
 function finishRelayDrag(cancel=false) {
  const drag=relayDrag;if (!drag) return;
  relayDrag=null;
- const track=$('relay-track');
- if (track.hasPointerCapture(drag.pointerId)) track.releasePointerCapture(drag.pointerId);
+ if (drag.frame) cancelAnimationFrame(drag.frame);
+ if (drag.container.hasPointerCapture(drag.pointerId)) drag.container.releasePointerCapture(drag.pointerId);
  drag.ghost?.remove();document.body.classList.remove('relay-dragging');
- for (const piece of track.children) piece.classList.remove('drag-slot');
+ for (const node of document.querySelectorAll('#relay-track > *,#relay-tasks > *')) node.classList.remove('drag-slot');
  if (cancel && drag.active) {
   const r=state.relay,byId=new Map(r.tasks.map(t => [t.id,t]));
   r.tasks=drag.original.map(id => byId.get(id)).filter(Boolean).concat(r.tasks.filter(t => !drag.original.includes(t.id)));
@@ -1248,44 +1293,72 @@ function finishRelayDrag(cancel=false) {
   setText('relay-announcement',cancel ? '已取消排序' : '任务顺序已调整');
  }
 }
-$('relay-track').addEventListener('pointerdown',event => {
- if (event.button !== 0 || relayDrag) return;
- const piece=event.target.closest('.relay-piece');
- if (!piece || !relayCanMove(piece.dataset.id)) return;
- event.preventDefault();piece.focus({preventScroll:true});
- const rect=piece.getBoundingClientRect(),movable=[...$('relay-track').children].filter(node => relayCanMove(node.dataset.id));
- relayDrag={id:piece.dataset.id,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,offsetX:event.clientX-rect.left,offsetY:event.clientY-rect.top,width:rect.width,height:rect.height,active:false,ghost:null,original:state.relay.tasks.map(t => t.id),centers:movable.map(node => {const rect=node.getBoundingClientRect();return rect.left+rect.width/2;})};
- $('relay-track').setPointerCapture(event.pointerId);
-});
-$('relay-track').addEventListener('pointermove',event => {
- const drag=relayDrag;if (!drag || event.pointerId !== drag.pointerId) return;
- if (!drag.active && Math.hypot(event.clientX-drag.startX,event.clientY-drag.startY)<5) return;
- event.preventDefault();
- if (!drag.active) {
-  const piece=[...$('relay-track').children].find(node => node.dataset.id === drag.id);
-  if (!piece || !relayCanMove(drag.id)) {finishRelayDrag(false);return;}
-  drag.active=true;drag.ghost=piece.cloneNode(true);drag.ghost.classList.add('relay-drag-ghost');drag.ghost.setAttribute('aria-hidden','true');drag.ghost.tabIndex=-1;
-  drag.ghost.style.width=drag.width+'px';drag.ghost.style.height=drag.height+'px';document.body.append(drag.ghost);
-  piece.classList.add('drag-slot');document.body.classList.add('relay-dragging');
- }
- drag.ghost.style.left=(event.clientX-drag.offsetX)+'px';drag.ghost.style.top=(event.clientY-drag.offsetY)+'px';
- const center=event.clientX-drag.offsetX+drag.width/2;
+function updateRelayDragPosition(drag) {
+ if (relayDrag !== drag || !drag.active) return;
+ drag.ghost.style.left=(drag.fromList ? drag.left : drag.x-drag.offsetX)+'px';
+ drag.ghost.style.top=(drag.y-drag.offsetY)+'px';
+ const center=drag.fromList ? drag.y-drag.offsetY+drag.height/2+scrollY-drag.scrollY : drag.x-drag.offsetX+drag.width/2;
  let target=0;
  while (target<drag.centers.length-1 && center>(drag.centers[target]+drag.centers[target+1])/2) target++;
  const ids=state.relay.tasks.filter(t => relayCanMove(t.id)).map(t => t.id),index=ids.indexOf(drag.id);
  if (index<0) {finishRelayDrag(false);return;}
  if (target !== index) {ids.splice(target,0,ids.splice(index,1)[0]);relayApplyOrder(ids);}
-});
-$('relay-track').addEventListener('pointerup',event => {if (relayDrag?.pointerId === event.pointerId) finishRelayDrag(false);});
-$('relay-track').addEventListener('pointercancel',() => finishRelayDrag(true));
-$('relay-track').addEventListener('lostpointercapture',() => {if (relayDrag) finishRelayDrag(true);});
-$('relay-track').addEventListener('keydown',event => {
- const piece=event.target.closest('.relay-piece');
- if (!piece || !['ArrowLeft','ArrowRight'].includes(event.key)) return;
- event.preventDefault();moveRelayTask(piece.dataset.id,event.key === 'ArrowLeft' ? -1 : 1);
-});
+}
+function relayDragScrollFrame() {
+ const drag=relayDrag;
+ if (!drag?.active || !drag.fromList) return;
+ drag.frame=0;
+ const edge=56,dy=drag.y<edge ? -Math.ceil((edge-drag.y)/4) : drag.y>innerHeight-edge ? Math.ceil((drag.y-innerHeight+edge)/4) : 0;
+ if (dy) {window.scrollBy(0,Math.max(-14,Math.min(14,dy)));updateRelayDragPosition(drag);}
+ drag.frame=requestAnimationFrame(relayDragScrollFrame);
+}
+function setupRelayDrag(container,fromList=false) {
+ container.addEventListener('pointerdown',event => {
+  if (event.button !== 0 || event.isPrimary === false || relayDrag) return;
+  const handle=event.target.closest(fromList ? '.relay-drag-handle' : '.relay-piece');
+  const item=fromList ? handle?.closest('.relay-task') : handle;
+  if (!item || !relayCanMove(item.dataset.id) || handle.disabled) return;
+  event.preventDefault();handle.focus({preventScroll:true});
+  const rect=item.getBoundingClientRect(),movable=[...container.children].filter(node => relayCanMove(node.dataset.id));
+  relayDrag={id:item.dataset.id,container,fromList,pointerId:event.pointerId,startX:event.clientX,startY:event.clientY,x:event.clientX,y:event.clientY,offsetX:event.clientX-rect.left,offsetY:event.clientY-rect.top,left:rect.left,width:rect.width,height:rect.height,scrollY,active:false,ghost:null,frame:0,original:state.relay.tasks.map(t => t.id),centers:movable.map(node => {const r=node.getBoundingClientRect();return fromList ? r.top+r.height/2 : r.left+r.width/2;})};
+  container.setPointerCapture(event.pointerId);
+ });
+ container.addEventListener('pointermove',event => {
+  const drag=relayDrag;if (!drag || drag.container !== container || event.pointerId !== drag.pointerId) return;
+  drag.x=event.clientX;drag.y=event.clientY;
+  if (!drag.active && Math.hypot(drag.x-drag.startX,drag.y-drag.startY)<5) return;
+  event.preventDefault();
+  if (!drag.active) {
+   const item=[...container.children].find(node => node.dataset.id === drag.id);
+   if (!item || !relayCanMove(drag.id)) {finishRelayDrag(false);return;}
+   drag.active=true;drag.ghost=item.cloneNode(true);drag.ghost.classList.add('relay-drag-ghost');
+   if (fromList) drag.ghost.classList.add('relay-row-drag-ghost');
+   drag.ghost.setAttribute('aria-hidden','true');drag.ghost.inert=true;drag.ghost.tabIndex=-1;
+   drag.ghost.removeAttribute('id');for (const node of drag.ghost.querySelectorAll('[id]')) node.removeAttribute('id');
+   drag.ghost.style.width=drag.width+'px';drag.ghost.style.height=drag.height+'px';document.body.append(drag.ghost);
+   item.classList.add('drag-slot');document.body.classList.add('relay-dragging');
+   if (fromList) drag.frame=requestAnimationFrame(relayDragScrollFrame);
+  }
+  updateRelayDragPosition(drag);
+ });
+ container.addEventListener('pointerup',event => {if (relayDrag?.container === container && relayDrag.pointerId === event.pointerId) finishRelayDrag(false);});
+ container.addEventListener('pointercancel',() => {if (relayDrag?.container === container) finishRelayDrag(true);});
+ container.addEventListener('lostpointercapture',() => {if (relayDrag?.container === container) finishRelayDrag(true);});
+ container.addEventListener('keydown',event => {
+  const handle=event.target.closest(fromList ? '.relay-drag-handle' : '.relay-piece');
+  const item=fromList ? handle?.closest('.relay-task') : handle,keys=fromList ? ['ArrowUp','ArrowDown'] : ['ArrowLeft','ArrowRight'];
+  if (!item || !keys.includes(event.key)) return;
+  event.preventDefault();moveRelayTask(item.dataset.id,event.key === keys[0] ? -1 : 1,fromList);
+ });
+}
+setupRelayDrag($('relay-track'));
+setupRelayDrag($('relay-tasks'),true);
+
 document.addEventListener('keydown',event => {if (event.key === 'Escape' && relayDrag) {event.preventDefault();finishRelayDrag(true);}});
-window.addEventListener('resize',() => finishRelayDrag(true));
+window.addEventListener('resize',() => {
+ finishRelayDrag(true);
+ for (const node of document.querySelectorAll('#relay-track > *,#relay-tasks > *')) for (const animation of node.getAnimations()) animation.cancel();
+});
 matchMedia('(prefers-reduced-motion: reduce)').addEventListener('change',event => {
  if (event.matches) for (const node of document.querySelectorAll('#relay-track > *,#relay-tasks > *')) for (const animation of node.getAnimations()) animation.cancel();
 });
